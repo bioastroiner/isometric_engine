@@ -1,71 +1,76 @@
-pub mod renderer;
+pub mod math;
+pub mod tile;
+
+use math::*;
+use tile::*;
 
 use std::{collections::HashMap, ops::Range};
 
 use macroquad::{
     prelude::*,
+    shapes,
     ui::{hash, root_ui, widgets::Label},
 };
 
-#[inline]
-fn transform_tile(x: f32, y: f32, tile_size: (f32, f32)) -> (f32, f32) {
-    let mat = tile_matrix(tile_size);
-    (mat.mul_vec2(vec2(x, y)).x, mat.mul_vec2(vec2(x, y)).y)
-}
-
-#[inline]
-fn tile_matrix(tile_size: (f32, f32)) -> Mat2 {
-    let (w, h) = tile_size;
-    Mat2::from_cols_array(&[0.5 * w, -0.5 * w, 0.25 * h, 0.25 * h]).transpose()
-}
-
-#[inline]
-fn draw_tile(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D) {
-    let (x, y) = transform_tile(x - 1., y - 1., tile_size);
-    draw_texture_ex(
-        texture,
-        x,
-        y,
-        WHITE,
-        DrawTextureParams {
-            // flip_y: true,
-            ..Default::default()
-        },
-    );
-}
-
-#[inline]
-fn draw_isometric_axis(at_isometric: Vec2, length: f32, tile_size: (f32, f32)) {
-    /* X Axis */
-    let (x1, y1) = transform_tile(0. + at_isometric.x, 0. + at_isometric.y, tile_size);
-    let (x2, y2) = transform_tile(length + at_isometric.x, 0. + at_isometric.y, tile_size);
-    draw_line(x1, y1, x2, y2, 2.0, GREEN);
-    /* Y Axis */
-    let (x1, y1) = transform_tile(0. + at_isometric.x, 0. + at_isometric.y, tile_size);
-    let (x2, y2) = transform_tile(0. + at_isometric.x, length + at_isometric.y, tile_size);
-    draw_line(x1, y1, x2, y2, 2.0, RED);
-    /* fake Z Axis */
-    let (x1, y1) = transform_tile(0. + at_isometric.x, 0. + at_isometric.y, tile_size);
-    let (x2, y2) = transform_tile(
-        -length + at_isometric.x,
-        -length + at_isometric.y,
-        tile_size,
-    );
-    draw_line(x1, y1, x2, y2, 2.0, BLUE);
-}
-
-#[inline]
-// rather expensive
-fn draw_isometric_grid(at_isometric: Vec2, length: f32, tile_size: (f32, f32)) {
-    let v = at_isometric.floor();
-    for i in 1..(length as i32) {
-        let (x1, y1) = transform_tile(v.x, v.y + i as f32, tile_size);
-        let (x2, y2) = transform_tile(v.x + length.floor(), v.y + i as f32, tile_size);
-        draw_line(x1, y1, x2, y2, 3., GREEN);
-        let (x1, y1) = transform_tile(v.x + i as f32, v.y, tile_size);
-        let (x2, y2) = transform_tile(v.x + i as f32, v.y + length.floor(), tile_size);
-        draw_line(x1, y1, x2, y2, 3., RED);
+mod components {
+    struct Player {}
+    impl Player {
+        pub fn tick_controler() {}
     }
+}
+
+mod world {
+    use macroquad::{
+        logging::debug,
+        math::{vec3, Vec3},
+    };
+
+    use crate::BlockType;
+
+    const XY_SIZE: usize = 2000;
+    const Z_SIZE: usize = 200;
+    const AREA: usize = XY_SIZE * XY_SIZE;
+    const VOL: usize = AREA * Z_SIZE;
+    /// world only stores tiles as they can be only one tile per block
+    pub struct World {
+        tile_storage: [[[u8; XY_SIZE]; XY_SIZE]; Z_SIZE],
+        // entity_storage
+    }
+    impl World {
+        pub fn new() -> Self {
+            Self {
+                tile_storage: [[[0; XY_SIZE]; XY_SIZE]; Z_SIZE],
+            }
+        }
+        pub fn set_block(&mut self, x: usize, y: usize, z: usize, b: u8) {
+            self.tile_storage[z][y][x] = b;
+        }
+        pub fn get_block(&self, x: usize, y: usize, z: usize) -> u8 {
+            self.tile_storage[z][y][x]
+        }
+        pub fn blocks_to_render_queue(&self, dest: &mut Vec<(Vec3, BlockType)>) {
+            for (i, e) in self.tile_storage.iter().enumerate() {
+                let z = i;
+                for (i, e) in e.iter().enumerate() {
+                    let y = i;
+                    for (i, e) in e.iter().enumerate() {
+                        let x = i;
+                        if *e != 0 {
+                            dest.push((vec3(x as f32, y as f32, z as f32), BlockType::Tile(*e)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+type Vel = Vec3;
+
+#[derive(Clone, Copy, Debug)]
+enum BlockType {
+    Tile(u8),
+    Entity(Vel),
 }
 
 #[macroquad::main("Isometric Engine")]
@@ -86,76 +91,135 @@ async fn main() {
     // stuff like roofs that have higher Z than player will not render temporary when players under (so it dosent make the player look like its on top of it rather)
 
     let mut tiles: Vec<Texture2D> = Vec::new();
+    tiles.push(load_texture("empty.png").await.unwrap()); // this should not be rendered
     tiles.push(load_texture("tile_select.png").await.unwrap());
     tiles.push(load_texture("tile_frame.png").await.unwrap());
     tiles.push(load_texture("tile_grass.png").await.unwrap());
     tiles.push(load_texture("tile.png").await.unwrap());
     tiles.push(load_texture("tile_d.png").await.unwrap());
+    tiles.push(load_texture("tile_machine.png").await.unwrap());
+    build_textures_atlas();
     for ele in &tiles {
         ele.set_filter(FilterMode::Nearest);
     }
     let player_texture = load_texture("creeper.png").await.unwrap();
     player_texture.set_filter(FilterMode::Nearest);
 
-    let (mut px, mut py) = (0.0f32, 0.0f32);
-
-    let x_size = 100;
-    let y_size = 100;
-    let z_size = 20;
-    let mut tile_map: Vec<(Vec3, u32)> = Vec::with_capacity(1000);
-    tile_map.push((vec3(0., 0., 1.0), 0));
-    tile_map.push((vec3(5., 5., 3.), 4));
-    for i in 0..10 {
-        for j in 0..10 {
-            tile_map.push((vec3(i as f32, j as f32, 0.), 2));
+    // world gen
+    let mut world = Box::new(world::World::new());
+    for i in 0..50 {
+        for j in 0..50 {
+            for k in 0..(j) % 50 {
+                world.set_block(i, j, k, 3);
+            }
+            // world.set_block(i, j, 0, 3);
         }
     }
 
+    let mut draw_queue: Vec<(Vec3, BlockType)> = Vec::with_capacity(1000);
+    draw_queue.push(((vec3(0., 0., 1.)), BlockType::Entity(Vec3::ZERO)));
+    world.blocks_to_render_queue(&mut draw_queue);
+    // sorting a list of object in a 3d space
+    //// 1. Determine if boxes overlap on screen
+    ////      sort by z
+    // 2. Determine which boxes in front
+    // 3. Draw Boxes in correct order
+
     let player_speed = 2.0;
+    let mut curser_pos_iso = vec2(0., 0.);
+    let tile_size = (64.0, 64.0);
+
     loop {
-        if is_key_down(KeyCode::S) {
-            py -= get_frame_time() * player_speed;
-        }
-        if is_key_down(KeyCode::W) {
-            py += get_frame_time() * player_speed;
-        }
-        if is_key_down(KeyCode::A) {
-            px -= get_frame_time() * player_speed;
-        }
-        if is_key_down(KeyCode::D) {
-            px += get_frame_time() * player_speed;
-        }
+        draw_queue
+            .sort_by(|(a, _), (b, _)| (a.y + a.x + a.z).partial_cmp(&(b.y + b.x + b.z)).unwrap());
+        // draw_queue
+        //     .sort_by(|(a, _), (b, _)| (a.z).partial_cmp(&(a.z)).unwrap());
 
         set_camera(&camera);
         clear_background(BLACK);
-        draw_isometric_axis(vec2(0., 0.), 10., (32., 32.));
-        let c = camera.screen_to_world(vec2(mouse_position().0, mouse_position().1));
-        draw_rectangle_lines(c.x - 50., c.y - 50., 100., 100., 5., WHITE);
-        let c = camera.screen_to_world(vec2(mouse_position().0, mouse_position().1));
-        let a = tile_matrix((32., 32.)).inverse().mul_vec2(c);
-        draw_isometric_grid(a, 10., (32., 32.));
-        let b = tile_matrix((32., 32.)).mul_vec2(c);
-        let (x, y) = transform_tile(a.x as f32, a.y as f32, (32., 32.));
-        draw_text(format!("{}", vec2(x, y)).as_str(), x, y, 18., YELLOW);
-        for (b, i) in tile_map.iter() {
-            draw_tile(b.x - b.z, b.y - b.z, (32., 32.), &tiles[(*i) as usize]);
+        draw_isometric_axis(vec2(0., 0.), 10., tile_size);
+        let camera_screen_world =
+            camera.screen_to_world(vec2(mouse_position().0, mouse_position().1));
+        draw_rectangle_lines(
+            camera_screen_world.x - 50.,
+            camera_screen_world.y - 50.,
+            100.,
+            100.,
+            5.,
+            WHITE,
+        );
+        let csw_in_isometric = from_iso(camera_screen_world, tile_size);
+        draw_isometric_grid(csw_in_isometric, 10., tile_size);
+        for (b, i) in draw_queue.iter_mut() {
+            match i {
+                BlockType::Entity(vel) => {
+                    let player_pos = b;
+                    let direction = -(player_pos.xy() - curser_pos_iso).normalize();
+                    if is_key_down(KeyCode::W) {
+                        if !direction.is_nan() && direction.length() > 0.5 {
+                            *player_pos += vec3(direction.x, direction.y, 0.)
+                                * player_speed
+                                * get_frame_time();
+                        }
+                    }
+                }
+                _ => (),
+            }
         }
-        // player
-        draw_tile(px, py, (32., 32.), &player_texture);
+        for (b, i) in draw_queue.iter() {
+            match i {
+                BlockType::Tile(tile_id) => {
+                    let p = space_to_iso(*b);
+                    draw_tile_margin(p.x, p.y, tile_size, &tiles[(*tile_id) as usize], 0.);
+                }
+                BlockType::Entity(vel) => {
+                    let p = space_to_iso(*b);
+                    draw_tile(p.x, p.y, tile_size, &player_texture)
+                }
+                _ => todo!(),
+            }
+        }
+        curser_pos_iso = vec2(csw_in_isometric.x.floor(), csw_in_isometric.y.ceil());
         // cursor
-        draw_tile(a.x.floor(), a.y.ceil(), (32., 32.), &tiles[0]);
+        // draw_tile(curser_pos_iso.x, curser_pos_iso.y, tile_size, &tiles[1]);
+        let h_pos = vec2(curser_pos_iso.x, curser_pos_iso.y);
+        draw_hexagon(
+            tile_matrix(tile_size).mul_vec2(h_pos).x + tile_size.0 / 2.,
+            tile_matrix(tile_size).mul_vec2(h_pos).y,
+            tile_size.0 / 2.,
+            1.,
+            true,
+            Color::new(
+                ((get_time() as f32).sin() + 1.0) / 2.0,
+                ((get_time() as f32).cos() + 1.0) / 2.,
+                1.0,
+                1.0,
+            ),
+            Color::new(0., 0., 0., 0.),
+        );
 
         push_camera_state();
         set_default_camera();
+        draw_text(
+            format!(
+                "{}",
+                vec2(csw_in_isometric.x.floor(), csw_in_isometric.y.ceil())
+            )
+            .as_str(),
+            mouse_position().0,
+            mouse_position().1,
+            18.,
+            YELLOW,
+        );
         // draw_text(format!("{b}").as_str(), 40., 30., 14., WHITE);
         pop_camera_state();
         root_ui().group(hash!(), vec2(200., 400.), |ui| {
             if ui.button(None, "Sort Map") {
-                tile_map.sort_by(|(a, _), (b, _)| a.z.partial_cmp(&b.z).unwrap());
+                draw_queue.sort_by(|(a, _), (b, _)| a.z.partial_cmp(&b.z).unwrap());
             }
-            for (i, (e, id)) in tile_map.clone().iter().enumerate() {
-                if ui.button(None, format!("{i}: {e}:{id}",).as_str()) {
-                    tile_map.remove(i);
+            for (i, (e, id)) in draw_queue.clone().iter().enumerate() {
+                if ui.button(None, format!("{i}: {e}",).as_str()) {
+                    draw_queue.remove(i);
                 }
             }
         });
