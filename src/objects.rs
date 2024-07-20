@@ -91,7 +91,7 @@ impl ISOGraphics for Block {
 
         if (self.pos.z - player_pos.z).abs() > 8. {
             // dont render if a block is 8 block down or up from player
-            return;
+            return
         } else {
             let player_pos_i = space_to_iso(player_pos);
             let p = space_to_iso(self.pos);

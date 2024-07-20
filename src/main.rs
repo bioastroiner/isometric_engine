@@ -56,7 +56,7 @@ async fn main() {
             //ground
             _world.set_block(i, j, 0, 3);
             // hill
-            if i >= 5 && i <= 8 && j >= 3 && j <= 6 {
+            if (5..=8).contains(&i) && (3..=6).contains(&j) {
                 _world.set_block(i, j, 2, 3);
                 _world.set_block(i, j, 4, 3);
             }
@@ -242,7 +242,7 @@ async fn main() {
                 ui.button(None, "Select Block:");
                 for (id,t) in game.block_textures.iter().enumerate() {
                 ui.button(None, format!("BlockID: {}",id));
-                    ui.canvas().image(Rect::new(0., 0., 32., 32.), &t);
+                    ui.canvas().image(Rect::new(0., 0., 32., 32.), t);
                 }
             });
         }
