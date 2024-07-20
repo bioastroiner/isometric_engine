@@ -1,4 +1,4 @@
-use std::ops::Mul;
+
 
 /****************************************
    Extention of Math Utilities

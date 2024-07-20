@@ -10,7 +10,7 @@
 use crate::math::*;
 use macroquad::prelude::*;
 #[inline]
-pub fn draw_tile_color(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D, color: Color) {
+pub fn draw_tile_color(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D, _color: Color) {
     let (x, y) = transform_tile(x - 1., y - 1., tile_size);
     draw_texture_ex(
         texture,

@@ -1,7 +1,6 @@
 use macroquad::{
-    color::{hsl_to_rgb, rgb_to_hsl, Color, WHITE},
+    color::{hsl_to_rgb, rgb_to_hsl, WHITE},
     math::{vec3, Vec3},
-    texture::Texture2D,
 };
 
 use crate::{constants, draw_tile, draw_tile_margin_color, space_to_iso, Game, TILE_SIZE};

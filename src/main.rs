@@ -2,17 +2,15 @@ pub mod math;
 pub mod tile;
 
 use math::*;
-use objects::{Block, ISOGraphics, ISOObject, ISOPhysic, Player};
+use objects::{ISOGraphics, ISOObject, ISOPhysic, Player};
 use tile::*;
 use world::World;
 
-use std::{any::Any, borrow::Borrow, cell::RefCell, collections::HashMap, ops::Range, rc::Rc};
+use std::{borrow::Borrow, cell::RefCell, rc::Rc};
 
 use macroquad::{
-    color,
     prelude::*,
-    shapes,
-    ui::{self, hash, root_ui, widgets::Label},
+    ui::{hash, root_ui},
 };
 
 mod objects;
@@ -73,7 +71,7 @@ async fn main() {
     _world.set_block(10, 10, 3 + 2, 6);
     _world.set_block(11, 10, 3 + 2, 6);
     _world.set_block(12, 10, 3 + 2, 6);
-    let mut game = Game {
+    let game = Game {
         block_textures: _tiles,
         player_texture: _player_texture,
         player_object: _player,

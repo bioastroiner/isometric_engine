@@ -1,5 +1,4 @@
 use macroquad::{
-    logging::debug,
     math::{vec3, Vec3},
 };
 
