@@ -268,6 +268,7 @@ async fn main() {
         push_camera_state();
         set_default_camera();
         let v = in_2d(player_pos);
+        camera.target = v;
         let v = camera.world_to_screen(v);
         let m: Vec2 = mouse_position().into();
         // let a = v.angle_between(v - m).to_degrees() + 180.;
