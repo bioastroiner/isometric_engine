@@ -12,7 +12,7 @@ use macroquad::{
     color,
     prelude::*,
     shapes,
-    ui::{hash, root_ui, widgets::Label},
+    ui::{self, hash, root_ui, widgets::Label},
 };
 
 mod objects;
@@ -58,18 +58,21 @@ async fn main() {
             //ground
             _world.set_block(i, j, 0, 3);
             // hill
-            let mut cnt = 2;
             if i >= 5 && i <= 8 && j >= 3 && j <= 6 {
-                for k in 1..(cnt) {
-                    _world.set_block(i, j, k, 3);
-                    cnt = cnt + 1;
-                }
+                _world.set_block(i, j, 2, 3);
+                _world.set_block(i, j, 4, 3);
             }
             if i > 0 && i < 3 && j > 0 && j < 3 {
                 _world.set_block(i, j, 4, 3);
             }
         }
     }
+    _world.set_block(10, 10, 1, 6);
+    _world.set_block(11, 10, 1, 6);
+    _world.set_block(12, 10, 1, 6);
+    _world.set_block(10, 10, 3 + 2, 6);
+    _world.set_block(11, 10, 3 + 2, 6);
+    _world.set_block(12, 10, 3 + 2, 6);
     let mut game = Game {
         block_textures: _tiles,
         player_texture: _player_texture,
@@ -115,7 +118,6 @@ async fn main() {
         if mouse_wheel().1.abs() > 0. {
             camera.zoom += mouse_wheel().1 * get_frame_time() * 240f32.recip();
             camera.zoom = camera.zoom.clamp(lower_limit, upper_limit);
-            debug!("{}", camera.zoom);
         }
         // let p_on_scr = camera.world_to_screen(from_iso(
         //     space_to_iso(game.player_object.as_ref().borrow().pos()),
@@ -227,6 +229,7 @@ async fn main() {
                 None,
                 format!("Player: {}", game.player_object.as_ref().borrow().pos()).as_str(),
             );
+            ui.button(None, format!("FPS: {}", get_fps()).as_str());
             // if ui.button(None, "Sort Map") {
             //     draw_queue.sort_by(|(a, _), (b, _)| a.z.partial_cmp(&b.z).unwrap());
             // }
@@ -236,6 +239,15 @@ async fn main() {
             //     }
             // }
         });
+        if is_mouse_button_down(MouseButton::Right) {
+            root_ui().window(hash!(), mouse_position().into(), vec2(100., 200.), |ui| {
+                ui.button(None, "Select Block:");
+                for (id,t) in game.block_textures.iter().enumerate() {
+                ui.button(None, format!("BlockID: {}",id));
+                    ui.canvas().image(Rect::new(0., 0., 32., 32.), &t);
+                }
+            });
+        }
         next_frame().await;
     }
 }
