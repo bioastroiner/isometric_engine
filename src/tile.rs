@@ -10,8 +10,8 @@
 use crate::math::*;
 use macroquad::prelude::*;
 #[inline]
-pub fn draw_tile(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D) {
-    let (x, y) = transform_tile(x-1., y-1., tile_size);
+pub fn draw_tile_color(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D, color: Color) {
+    let (x, y) = transform_tile(x - 1., y - 1., tile_size);
     draw_texture_ex(
         texture,
         x,
@@ -24,6 +24,10 @@ pub fn draw_tile(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D) {
     );
 }
 #[inline]
+pub fn draw_tile(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D) {
+    draw_tile_color(x, y, tile_size, texture, WHITE);
+}
+#[inline]
 pub fn draw_tile_margin(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D, margin: f32) {
     let (x, y) = transform_tile(x - 1., y - 1., tile_size);
     draw_texture_ex(
@@ -31,6 +35,27 @@ pub fn draw_tile_margin(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture
         x + margin,
         y + margin,
         WHITE,
+        DrawTextureParams {
+            dest_size: Some((tile_size.0 - margin, tile_size.1 - margin).into()),
+            ..Default::default()
+        },
+    );
+}
+#[inline]
+pub fn draw_tile_margin_color(
+    x: f32,
+    y: f32,
+    tile_size: (f32, f32),
+    texture: &Texture2D,
+    margin: f32,
+    color: Color,
+) {
+    let (x, y) = transform_tile(x - 1., y - 1., tile_size);
+    draw_texture_ex(
+        texture,
+        x + margin,
+        y + margin,
+        color,
         DrawTextureParams {
             dest_size: Some((tile_size.0 - margin, tile_size.1 - margin).into()),
             ..Default::default()

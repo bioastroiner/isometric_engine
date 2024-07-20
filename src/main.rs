@@ -2,79 +2,81 @@ pub mod math;
 pub mod tile;
 
 use math::*;
+use objects::{Block, ISOGraphics, ISOObject, ISOPhysic, Player};
 use tile::*;
+use world::World;
 
-use std::{collections::HashMap, ops::Range};
+use std::{any::Any, borrow::Borrow, cell::RefCell, collections::HashMap, ops::Range, rc::Rc};
 
 use macroquad::{
+    color,
     prelude::*,
     shapes,
     ui::{hash, root_ui, widgets::Label},
 };
 
-mod components {
-    struct Player {}
-    impl Player {
-        pub fn tick_controler() {}
-    }
+mod objects;
+mod world;
+mod constants {
+    pub const TILE_SIZE: (f32, f32) = (64.0, 64.0);
 }
+use constants::*;
+struct Game {
+    block_textures: Vec<Texture2D>,
+    player_texture: Texture2D,
 
-mod world {
-    use macroquad::{
-        logging::debug,
-        math::{vec3, Vec3},
-    };
-
-    use crate::BlockType;
-
-    const XY_SIZE: usize = 2000;
-    const Z_SIZE: usize = 200;
-    const AREA: usize = XY_SIZE * XY_SIZE;
-    const VOL: usize = AREA * Z_SIZE;
-    /// world only stores tiles as they can be only one tile per block
-    pub struct World {
-        tile_storage: [[[u8; XY_SIZE]; XY_SIZE]; Z_SIZE],
-        // entity_storage
-    }
-    impl World {
-        pub fn new() -> Self {
-            Self {
-                tile_storage: [[[0; XY_SIZE]; XY_SIZE]; Z_SIZE],
-            }
-        }
-        pub fn set_block(&mut self, x: usize, y: usize, z: usize, b: u8) {
-            self.tile_storage[z][y][x] = b;
-        }
-        pub fn get_block(&self, x: usize, y: usize, z: usize) -> u8 {
-            self.tile_storage[z][y][x]
-        }
-        pub fn blocks_to_render_queue(&self, dest: &mut Vec<(Vec3, BlockType)>) {
-            for (i, e) in self.tile_storage.iter().enumerate() {
-                let z = i;
-                for (i, e) in e.iter().enumerate() {
-                    let y = i;
-                    for (i, e) in e.iter().enumerate() {
-                        let x = i;
-                        if *e != 0 {
-                            dest.push((vec3(x as f32, y as f32, z as f32), BlockType::Tile(*e)));
-                        }
-                    }
-                }
-            }
-        }
-    }
+    player_object: Rc<RefCell<Player>>,
+    world: Box<World>,
 }
-
-type Vel = Vec3;
-
-#[derive(Clone, Copy, Debug)]
-enum BlockType {
-    Tile(u8),
-    Entity(Vel),
-}
-
 #[macroquad::main("Isometric Engine")]
 async fn main() {
+    // load textures into GPU
+    // items here are named as _name bec they are moved to gamestate pls dont refrence them
+    let mut _tiles: Vec<Texture2D> = Vec::new();
+    _tiles.push(load_texture("empty.png").await.unwrap()); // this should not be rendered
+    _tiles.push(load_texture("tile_select.png").await.unwrap());
+    _tiles.push(load_texture("tile_frame.png").await.unwrap());
+    _tiles.push(load_texture("tile_grass.png").await.unwrap());
+    _tiles.push(load_texture("tile.png").await.unwrap());
+    _tiles.push(load_texture("tile_d.png").await.unwrap());
+    _tiles.push(load_texture("tile_machine.png").await.unwrap());
+    build_textures_atlas();
+    for ele in &_tiles {
+        ele.set_filter(FilterMode::Nearest);
+    }
+    let _player_texture = load_texture("creeper.png").await.unwrap();
+    _player_texture.set_filter(FilterMode::Nearest);
+    // create Player
+    let _player: Rc<RefCell<Player>> = Rc::new(RefCell::new(objects::Player::new(
+        vec3(0., 0., 1.),
+        Vec3::ZERO,
+    )));
+    // gen world
+    let mut _world = Box::new(world::World::new());
+    for i in 0..50 {
+        for j in 0..50 {
+            //ground
+            _world.set_block(i, j, 0, 3);
+            // hill
+            let mut cnt = 2;
+            if i >= 5 && i <= 8 && j >= 3 && j <= 6 {
+                for k in 1..(cnt) {
+                    _world.set_block(i, j, k, 3);
+                    cnt = cnt + 1;
+                }
+            }
+            if i > 0 && i < 3 && j > 0 && j < 3 {
+                _world.set_block(i, j, 4, 3);
+            }
+        }
+    }
+    let mut game = Game {
+        block_textures: _tiles,
+        player_texture: _player_texture,
+        player_object: _player,
+        world: _world,
+    };
+
     let mut camera = Camera2D::from_display_rect(Rect {
         x: -500.,
         y: -500.,
@@ -82,6 +84,8 @@ async fn main() {
         h: 1000.,
     });
     camera.zoom = vec2(camera.zoom.x, -camera.zoom.y);
+    let lower_limit = camera.zoom / 3.;
+    let upper_limit = camera.zoom * 3.;
 
     // render layers
     // each z is a layers
@@ -90,54 +94,37 @@ async fn main() {
     // player layer (always renders on top)
     // stuff like roofs that have higher Z than player will not render temporary when players under (so it dosent make the player look like its on top of it rather)
 
-    let mut tiles: Vec<Texture2D> = Vec::new();
-    tiles.push(load_texture("empty.png").await.unwrap()); // this should not be rendered
-    tiles.push(load_texture("tile_select.png").await.unwrap());
-    tiles.push(load_texture("tile_frame.png").await.unwrap());
-    tiles.push(load_texture("tile_grass.png").await.unwrap());
-    tiles.push(load_texture("tile.png").await.unwrap());
-    tiles.push(load_texture("tile_d.png").await.unwrap());
-    tiles.push(load_texture("tile_machine.png").await.unwrap());
-    build_textures_atlas();
-    for ele in &tiles {
-        ele.set_filter(FilterMode::Nearest);
+    let mut draw_queue: Vec<Rc<RefCell<dyn ISOGraphics>>> = Vec::with_capacity(1000);
+    draw_queue.push(game.player_object.clone());
+    // unload blocks from storage into render queue
+    // todo: Later do something with dynamic loading where we only load a portion of visible map
+    for ele in game.world.blocks() {
+        draw_queue.push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
     }
-    let player_texture = load_texture("creeper.png").await.unwrap();
-    player_texture.set_filter(FilterMode::Nearest);
-
-    // world gen
-    let mut world = Box::new(world::World::new());
-    for i in 0..50 {
-        for j in 0..50 {
-            for k in 0..(j) % 50 {
-                world.set_block(i, j, k, 3);
-            }
-            // world.set_block(i, j, 0, 3);
-        }
-    }
-
-    let mut draw_queue: Vec<(Vec3, BlockType)> = Vec::with_capacity(1000);
-    draw_queue.push(((vec3(0., 0., 1.)), BlockType::Entity(Vec3::ZERO)));
-    world.blocks_to_render_queue(&mut draw_queue);
-    // sorting a list of object in a 3d space
-    //// 1. Determine if boxes overlap on screen
-    ////      sort by z
-    // 2. Determine which boxes in front
-    // 3. Draw Boxes in correct order
-
-    let player_speed = 2.0;
     let mut curser_pos_iso = vec2(0., 0.);
-    let tile_size = (64.0, 64.0);
-
     loop {
-        draw_queue
-            .sort_by(|(a, _), (b, _)| (a.y + a.x + a.z).partial_cmp(&(b.y + b.x + b.z)).unwrap());
-        // draw_queue
-        //     .sort_by(|(a, _), (b, _)| (a.z).partial_cmp(&(a.z)).unwrap());
+        draw_queue.sort_by(|a, b| {
+            let a = a.as_ref().borrow();
+            let b = b.as_ref().borrow();
+            (a.pos().y + a.pos().x + a.pos().z)
+                .partial_cmp(&(b.pos().y + b.pos().x + b.pos().z))
+                .unwrap()
+        });
 
         set_camera(&camera);
+        if mouse_wheel().1.abs() > 0. {
+            camera.zoom += mouse_wheel().1 * get_frame_time() * 240f32.recip();
+            camera.zoom = camera.zoom.clamp(lower_limit, upper_limit);
+            debug!("{}", camera.zoom);
+        }
+        // let p_on_scr = camera.world_to_screen(from_iso(
+        //     space_to_iso(game.player_object.as_ref().borrow().pos()),
+        //     TILE_SIZE,
+        // ));
+        // camera.offset = p_on_scr;
+
         clear_background(BLACK);
-        draw_isometric_axis(vec2(0., 0.), 10., tile_size);
+        draw_isometric_axis(vec2(0., 0.), 10., TILE_SIZE);
         let camera_screen_world =
             camera.screen_to_world(vec2(mouse_position().0, mouse_position().1));
         draw_rectangle_lines(
@@ -148,45 +135,67 @@ async fn main() {
             5.,
             WHITE,
         );
-        let csw_in_isometric = from_iso(camera_screen_world, tile_size);
-        draw_isometric_grid(csw_in_isometric, 10., tile_size);
-        for (b, i) in draw_queue.iter_mut() {
-            match i {
-                BlockType::Entity(vel) => {
-                    let player_pos = b;
-                    let direction = -(player_pos.xy() - curser_pos_iso).normalize();
-                    if is_key_down(KeyCode::W) {
-                        if !direction.is_nan() && direction.length() > 0.5 {
-                            *player_pos += vec3(direction.x, direction.y, 0.)
-                                * player_speed
-                                * get_frame_time();
-                        }
-                    }
-                }
-                _ => (),
+        let csw_in_isometric = from_iso(camera_screen_world, TILE_SIZE);
+        let grid_pos = Vec2 {
+            x: csw_in_isometric.x - 4.,
+            y: csw_in_isometric.y - 4.,
+        };
+        draw_isometric_grid(grid_pos, 10., TILE_SIZE);
+
+        // update players physics
+        let direction2d =
+            -(game.player_object.as_ref().borrow().pos().xy() - curser_pos_iso).normalize();
+        let direction = vec3(
+            direction2d.x,
+            direction2d.y,
+            game.player_object.as_ref().borrow().vel().z,
+        );
+        if is_key_down(KeyCode::W) {
+            if !direction.is_nan() && direction.length() > 0.5 {
+                game.player_object.borrow_mut().set_vel(direction * 2.);
+                // player.pos += direction * player_speed * get_frame_time();
             }
+        } else {
+            let z = game.player_object.as_ref().borrow().vel().z;
+            game.player_object.borrow_mut().set_vel(vec3(0., 0., z));
         }
-        for (b, i) in draw_queue.iter() {
-            match i {
-                BlockType::Tile(tile_id) => {
-                    let p = space_to_iso(*b);
-                    draw_tile_margin(p.x, p.y, tile_size, &tiles[(*tile_id) as usize], 0.);
-                }
-                BlockType::Entity(vel) => {
-                    let p = space_to_iso(*b);
-                    draw_tile(p.x, p.y, tile_size, &player_texture)
-                }
-                _ => todo!(),
-            }
+        // todo jumping
+        // if is_key_down(KeyCode::Space) && !player.is_jumping && (player.vel.x < 0.1 || player.vel.y < 1.0) {
+        //     debug!("Jumped");
+        //     player.vel += vec3(0., 0., 15.);
+        //     player.is_jumping = true;
+        // }
+        // if player.is_jumping {
+        //     debug!("Jumping");
+        //     player.vel -= vec3(0., 0., 2.);
+        //     if player.pos.z < 1. {
+        //         debug!("Hit ground");
+        //         player.vel.z = 0.;
+        //         player.pos.z = 1.;
+        //         player.is_jumping = false;
+        //     }
+        // }
+        // update physics
+        let vel = game.player_object.as_ref().borrow().vel();
+        let pos = game.player_object.as_ref().borrow().pos();
+        game.player_object
+            .borrow_mut()
+            .set_pos(pos + vel * get_frame_time());
+        // player.pos += player.vel * get_frame_time();
+
+        // render
+        for el in draw_queue.iter() {
+            let renderable = el.as_ref().borrow();
+            renderable.render(&game);
         }
         curser_pos_iso = vec2(csw_in_isometric.x.floor(), csw_in_isometric.y.ceil());
         // cursor
         // draw_tile(curser_pos_iso.x, curser_pos_iso.y, tile_size, &tiles[1]);
         let h_pos = vec2(curser_pos_iso.x, curser_pos_iso.y);
         draw_hexagon(
-            tile_matrix(tile_size).mul_vec2(h_pos).x + tile_size.0 / 2.,
-            tile_matrix(tile_size).mul_vec2(h_pos).y,
-            tile_size.0 / 2.,
+            tile_matrix(TILE_SIZE).mul_vec2(h_pos).x + TILE_SIZE.0 / 2.,
+            tile_matrix(TILE_SIZE).mul_vec2(h_pos).y,
+            TILE_SIZE.0 / 2.,
             1.,
             true,
             Color::new(
@@ -214,14 +223,18 @@ async fn main() {
         // draw_text(format!("{b}").as_str(), 40., 30., 14., WHITE);
         pop_camera_state();
         root_ui().group(hash!(), vec2(200., 400.), |ui| {
-            if ui.button(None, "Sort Map") {
-                draw_queue.sort_by(|(a, _), (b, _)| a.z.partial_cmp(&b.z).unwrap());
-            }
-            for (i, (e, id)) in draw_queue.clone().iter().enumerate() {
-                if ui.button(None, format!("{i}: {e}",).as_str()) {
-                    draw_queue.remove(i);
-                }
-            }
+            ui.button(
+                None,
+                format!("Player: {}", game.player_object.as_ref().borrow().pos()).as_str(),
+            );
+            // if ui.button(None, "Sort Map") {
+            //     draw_queue.sort_by(|(a, _), (b, _)| a.z.partial_cmp(&b.z).unwrap());
+            // }
+            // for (i, (e, id)) in draw_queue.clone().iter().enumerate() {
+            //     if ui.button(None, format!("{i}: {e}",).as_str()) {
+            //         draw_queue.remove(i);
+            //     }
+            // }
         });
         next_frame().await;
     }
