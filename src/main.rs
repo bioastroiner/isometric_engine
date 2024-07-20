@@ -6,7 +6,13 @@ use objects::{ISOGraphics, ISOObject, ISOPhysic, Player};
 use tile::*;
 use world::World;
 
-use std::{borrow::Borrow, cell::RefCell, collections::HashMap, rc::Rc};
+use std::{
+    borrow::Borrow,
+    cell::RefCell,
+    collections::HashMap,
+    env::{self, Args},
+    rc::Rc,
+};
 
 use macroquad::{
     prelude::*,
@@ -52,6 +58,9 @@ fn in_2d(pos: Vec3) -> Vec2 {
 }
 #[macroquad::main("Isometric Engine")]
 async fn main() {
+    for (i, argument) in env::args().enumerate() {
+        println!("{i}: {argument}");
+    }
     // load textures into GPU
     // items here are named as _name bec they are moved to gamestate pls dont refrence them
     let mut _tiles: Vec<Texture2D> = Vec::new();
@@ -65,35 +74,35 @@ async fn main() {
     let mut _player_textures = HashMap::new();
     _player_textures.insert(
         PlayerOrient::_225,
-        load_texture("resources/player/+x.png").await.unwrap(),
+        load_texture("resources/player/225.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_315,
-        load_texture("resources/player/+y.png").await.unwrap(),
+        load_texture("resources/player/315.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_45,
-        load_texture("resources/player/-x.png").await.unwrap(),
+        load_texture("resources/player/45.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_135,
-        load_texture("resources/player/-y.png").await.unwrap(),
+        load_texture("resources/player/135.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_270,
-        load_texture("resources/player/+x+y.png").await.unwrap(),
+        load_texture("resources/player/270.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_90,
-        load_texture("resources/player/-x-y.png").await.unwrap(),
+        load_texture("resources/player/90.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_180,
-        load_texture("resources/player/+x-y.png").await.unwrap(),
+        load_texture("resources/player/180.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_0,
-        load_texture("resources/player/-x+y.png").await.unwrap(),
+        load_texture("resources/player/0.png").await.unwrap(),
     );
     for ele in &_tiles {
         ele.set_filter(FilterMode::Nearest);
