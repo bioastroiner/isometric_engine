@@ -1,15 +1,19 @@
 use macroquad::{
     color::{hsl_to_rgb, rgb_to_hsl, WHITE},
-    math::{vec3, Vec3},
+    logging::debug,
+    math::{vec3, Vec2, Vec3, Vec3Swizzles},
 };
 
-use crate::{constants, draw_tile, draw_tile_margin_color, space_to_iso, Game, TILE_SIZE};
+use crate::{
+    constants, draw_tile, draw_tile_margin_color, space_to_iso, tile, Game, PlayerOrient, TILE_SIZE,
+};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct Player {
     pos: Vec3,
     vel: Vec3,
     pub is_jumping: bool,
+    pub orient: PlayerOrient,
 }
 
 pub struct Block {
@@ -36,6 +40,31 @@ impl Player {
             pos,
             vel,
             is_jumping: true,
+            orient: PlayerOrient::_45,
+        }
+    }
+    pub fn update_orient(&mut self, degrees: f32) {
+        let q: f32 = 45. / 2.;
+        let ors = &[
+            // PlayerOrient::_0,
+            PlayerOrient::_45,
+            PlayerOrient::_90,
+            PlayerOrient::_135,
+            PlayerOrient::_180,
+            PlayerOrient::_225,
+            PlayerOrient::_270,
+            PlayerOrient::_315,
+        ];
+        if degrees > 360. - q || degrees < q {
+            self.orient = PlayerOrient::_0;
+            return;
+        } else {
+            for e in ors {
+                if degrees > *e as i32 as f32 - q && degrees < *e as i32 as f32 + q {
+                    self.orient = *e;
+                    return;
+                }
+            }
         }
     }
 }
@@ -91,7 +120,7 @@ impl ISOGraphics for Block {
 
         if (self.pos.z - player_pos.z).abs() > 8. {
             // dont render if a block is 8 block down or up from player
-            return
+            return;
         } else {
             let player_pos_i = space_to_iso(player_pos);
             let p = space_to_iso(self.pos);
@@ -125,7 +154,8 @@ impl ISOGraphics for Block {
 impl ISOGraphics for Player {
     fn render(&self, game_state: &Game) {
         let p = space_to_iso(self.pos);
-        draw_tile(p.x, p.y, constants::TILE_SIZE, &game_state.player_texture)
+        let t = game_state.player_textures.get(&self.orient).unwrap();
+        draw_tile(p.x, p.y, constants::TILE_SIZE, t)
     }
 }
 /*

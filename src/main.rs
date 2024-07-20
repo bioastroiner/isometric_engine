@@ -6,7 +6,7 @@ use objects::{ISOGraphics, ISOObject, ISOPhysic, Player};
 use tile::*;
 use world::World;
 
-use std::{borrow::Borrow, cell::RefCell, rc::Rc};
+use std::{borrow::Borrow, cell::RefCell, collections::HashMap, rc::Rc};
 
 use macroquad::{
     prelude::*,
@@ -19,12 +19,36 @@ mod constants {
     pub const TILE_SIZE: (f32, f32) = (64.0, 64.0);
 }
 use constants::*;
+#[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
+enum PlayerOrient {
+    _0 = 0,
+    _45 = 45,
+    _90 = 90,
+    _135 = 135,
+    _180 = 180,
+    _225 = 225,
+    _270 = 270,
+    _315 = 315,
+}
 struct Game {
     block_textures: Vec<Texture2D>,
     player_texture: Texture2D,
+    player_textures: HashMap<PlayerOrient, Texture2D>,
 
     player_object: Rc<RefCell<Player>>,
     world: Box<World>,
+}
+/// for when you want to get a point under a tile or object well centered for use with camera 2d
+/// or screen space (for that you first need to use Camera::world_to_space function in order to transform that into screen space from 2d world space)
+#[inline]
+fn in_2d(pos: Vec3) -> Vec2 {
+    let pp = pos;
+    let pp = space_to_iso(pos);
+    let pp = to_iso(pp, TILE_SIZE);
+    let pp = pp
+        .with_x(pp.x + TILE_SIZE.0 / 2.)
+        .with_y(pp.y + TILE_SIZE.1 / 2.);
+    pp
 }
 #[macroquad::main("Isometric Engine")]
 async fn main() {
@@ -38,12 +62,45 @@ async fn main() {
     _tiles.push(load_texture("tile.png").await.unwrap());
     _tiles.push(load_texture("tile_d.png").await.unwrap());
     _tiles.push(load_texture("tile_machine.png").await.unwrap());
-    build_textures_atlas();
+    let mut _player_textures = HashMap::new();
+    _player_textures.insert(
+        PlayerOrient::_225,
+        load_texture("resources/player/+x.png").await.unwrap(),
+    );
+    _player_textures.insert(
+        PlayerOrient::_315,
+        load_texture("resources/player/+y.png").await.unwrap(),
+    );
+    _player_textures.insert(
+        PlayerOrient::_45,
+        load_texture("resources/player/-x.png").await.unwrap(),
+    );
+    _player_textures.insert(
+        PlayerOrient::_135,
+        load_texture("resources/player/-y.png").await.unwrap(),
+    );
+    _player_textures.insert(
+        PlayerOrient::_270,
+        load_texture("resources/player/+x+y.png").await.unwrap(),
+    );
+    _player_textures.insert(
+        PlayerOrient::_90,
+        load_texture("resources/player/-x-y.png").await.unwrap(),
+    );
+    _player_textures.insert(
+        PlayerOrient::_180,
+        load_texture("resources/player/+x-y.png").await.unwrap(),
+    );
+    _player_textures.insert(
+        PlayerOrient::_0,
+        load_texture("resources/player/-x+y.png").await.unwrap(),
+    );
     for ele in &_tiles {
         ele.set_filter(FilterMode::Nearest);
     }
     let _player_texture = load_texture("creeper.png").await.unwrap();
     _player_texture.set_filter(FilterMode::Nearest);
+    build_textures_atlas();
     // create Player
     let _player: Rc<RefCell<Player>> = Rc::new(RefCell::new(objects::Player::new(
         vec3(0., 0., 1.),
@@ -76,6 +133,7 @@ async fn main() {
         player_texture: _player_texture,
         player_object: _player,
         world: _world,
+        player_textures: _player_textures,
     };
 
     let mut camera = Camera2D::from_display_rect(Rect {
@@ -143,8 +201,8 @@ async fn main() {
         draw_isometric_grid(grid_pos, 10., TILE_SIZE);
 
         // update players physics
-        let direction2d =
-            -(game.player_object.as_ref().borrow().pos().xy() - curser_pos_iso).normalize();
+        let player_pos = game.player_object.as_ref().borrow().pos();
+        let direction2d = -(player_pos.xy() - curser_pos_iso).normalize();
         let direction = vec3(
             direction2d.x,
             direction2d.y,
@@ -209,6 +267,29 @@ async fn main() {
 
         push_camera_state();
         set_default_camera();
+        let v = in_2d(player_pos);
+        let v = camera.world_to_screen(v);
+        let m: Vec2 = mouse_position().into();
+        // let a = v.angle_between(v - m).to_degrees() + 180.;
+        let a = (m - v).to_angle().to_degrees() - 180.;
+        let mut a = a + 180.;
+        if a > 360. {
+            a = a - 360.;
+        }
+        a = -a;
+        if a.is_sign_negative() {
+            a = a + 360.;
+        }
+        game.player_object.as_ref().borrow_mut().update_orient(a);
+        draw_text(
+            format!("a: {}, v->m: {}->{}", a, v, m).as_str(),
+            v.x,
+            v.y,
+            18.,
+            WHITE,
+        );
+        draw_line(v.x, v.y, m.x, m.y, 2., GREEN);
+        // draw_circle(v.x, v.y, 10., RED);
         draw_text(
             format!(
                 "{}",
@@ -228,6 +309,14 @@ async fn main() {
                 format!("Player: {}", game.player_object.as_ref().borrow().pos()).as_str(),
             );
             ui.button(None, format!("FPS: {}", get_fps()).as_str());
+            ui.button(
+                None,
+                format!(
+                    "Player Orientation: {:?}",
+                    game.player_object.as_ref().borrow().orient
+                )
+                .as_str(),
+            );
             // if ui.button(None, "Sort Map") {
             //     draw_queue.sort_by(|(a, _), (b, _)| a.z.partial_cmp(&b.z).unwrap());
             // }
@@ -240,8 +329,8 @@ async fn main() {
         if is_mouse_button_down(MouseButton::Right) {
             root_ui().window(hash!(), mouse_position().into(), vec2(100., 200.), |ui| {
                 ui.button(None, "Select Block:");
-                for (id,t) in game.block_textures.iter().enumerate() {
-                ui.button(None, format!("BlockID: {}",id));
+                for (id, t) in game.block_textures.iter().enumerate() {
+                    ui.button(None, format!("BlockID: {}", id));
                     ui.canvas().image(Rect::new(0., 0., 32., 32.), t);
                 }
             });
