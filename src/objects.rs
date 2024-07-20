@@ -5,7 +5,8 @@ use macroquad::{
 };
 
 use crate::{
-    constants, draw_tile, draw_tile_margin_color, space_to_iso, tile, Game, PlayerOrient, TILE_SIZE,
+    constants, draw_tile, draw_tile_margin_color, flatten_iso, render, Game, PlayerOrient,
+    TILE_SIZE,
 };
 
 #[derive(Debug)]
@@ -43,7 +44,7 @@ impl Player {
             orient: PlayerOrient::_45,
         }
     }
-    pub fn update_orient(&mut self, degrees: f32) {
+    pub fn update_orientation(&mut self, degrees: f32) {
         let q: f32 = 45. / 2.;
         let ors = &[
             // PlayerOrient::_0,
@@ -122,8 +123,8 @@ impl ISOGraphics for Block {
             // dont render if a block is 8 block down or up from player
             return;
         } else {
-            let player_pos_i = space_to_iso(player_pos);
-            let p = space_to_iso(self.pos);
+            let player_pos_i = flatten_iso(player_pos);
+            let p = flatten_iso(self.pos);
             let dist_to_player = (player_pos_i - p).length().abs();
             let a = if dist_to_player < 4. {
                 1.0
@@ -153,7 +154,7 @@ impl ISOGraphics for Block {
 
 impl ISOGraphics for Player {
     fn render(&self, game_state: &Game) {
-        let p = space_to_iso(self.pos);
+        let p = flatten_iso(self.pos);
         let t = game_state.player_textures.get(&self.orient).unwrap();
         draw_tile(p.x, p.y, constants::TILE_SIZE, t)
     }

@@ -1,9 +1,9 @@
 pub mod math;
-pub mod tile;
+pub mod render;
 
 use math::*;
 use objects::{ISOGraphics, ISOObject, ISOPhysic, Player};
-use tile::*;
+use render::*;
 use world::World;
 
 use std::{
@@ -16,7 +16,7 @@ use std::{
 
 use macroquad::{
     prelude::*,
-    ui::{hash, root_ui},
+    ui::{hash, root_ui, Skin},
 };
 
 mod objects;
@@ -38,9 +38,7 @@ enum PlayerOrient {
 }
 struct Game {
     block_textures: Vec<Texture2D>,
-    player_texture: Texture2D,
     player_textures: HashMap<PlayerOrient, Texture2D>,
-
     player_object: Rc<RefCell<Player>>,
     world: Box<World>,
 }
@@ -49,12 +47,19 @@ struct Game {
 #[inline]
 fn in_2d(pos: Vec3) -> Vec2 {
     let pp = pos;
-    let pp = space_to_iso(pos);
-    let pp = to_iso(pp, TILE_SIZE);
+    let pp = flatten_iso(pos);
+    let pp = world_to_is(pp, TILE_SIZE);
     let pp = pp
         .with_x(pp.x + TILE_SIZE.0 / 2.)
         .with_y(pp.y + TILE_SIZE.1 / 2.);
     pp
+}
+/// tests if a block exists on screen (not necesserly visible)
+fn is_on_screen(pos: Vec3, cam: &Camera2D) -> bool {
+    let r = Rect::new(0., 0., screen_width(), screen_width());
+    let f = flatten_iso(pos);
+    let f = tile_matrix(TILE_SIZE).inverse().mul_vec2(f);
+    r.contains(cam.world_to_screen(f))
 }
 #[macroquad::main("Isometric Engine")]
 async fn main() {
@@ -107,8 +112,6 @@ async fn main() {
     for ele in &_tiles {
         ele.set_filter(FilterMode::Nearest);
     }
-    let _player_texture = load_texture("creeper.png").await.unwrap();
-    _player_texture.set_filter(FilterMode::Nearest);
     build_textures_atlas();
     // create Player
     let _player: Rc<RefCell<Player>> = Rc::new(RefCell::new(objects::Player::new(
@@ -139,7 +142,6 @@ async fn main() {
     _world.set_block(12, 10, 3 + 2, 6);
     let game = Game {
         block_textures: _tiles,
-        player_texture: _player_texture,
         player_object: _player,
         world: _world,
         player_textures: _player_textures,
@@ -184,11 +186,6 @@ async fn main() {
             camera.zoom += mouse_wheel().1 * get_frame_time() * 240f32.recip();
             camera.zoom = camera.zoom.clamp(lower_limit, upper_limit);
         }
-        // let p_on_scr = camera.world_to_screen(from_iso(
-        //     space_to_iso(game.player_object.as_ref().borrow().pos()),
-        //     TILE_SIZE,
-        // ));
-        // camera.offset = p_on_scr;
 
         clear_background(BLACK);
         draw_isometric_axis(vec2(0., 0.), 10., TILE_SIZE);
@@ -202,7 +199,7 @@ async fn main() {
             5.,
             WHITE,
         );
-        let csw_in_isometric = from_iso(camera_screen_world, TILE_SIZE);
+        let csw_in_isometric = iso_to_world(camera_screen_world, TILE_SIZE);
         let grid_pos = Vec2 {
             x: csw_in_isometric.x - 4.,
             y: csw_in_isometric.y - 4.,
@@ -277,12 +274,15 @@ async fn main() {
         push_camera_state();
         set_default_camera();
         let v = in_2d(player_pos);
+        // move camera with player
         camera.target = v;
         let v = camera.world_to_screen(v);
         let m: Vec2 = mouse_position().into();
-        // let a = v.angle_between(v - m).to_degrees() + 180.;
-        let a = (m - v).to_angle().to_degrees() - 180.;
-        let mut a = a + 180.;
+        // hack: convert angle between player's pos to mouse pos to a format we care about
+        // 0 starts at right goes to left and up and ends at 360 on right
+        let a = (m - v).to_angle().to_degrees() - 180.; // -pi to +pi -> 0 to 2pi
+        let mut a = a + 180.; // clockwise to c-clockwise
+                              // teach computers to do -theta = 360.-theta
         if a > 360. {
             a = a - 360.;
         }
@@ -290,16 +290,12 @@ async fn main() {
         if a.is_sign_negative() {
             a = a + 360.;
         }
-        game.player_object.as_ref().borrow_mut().update_orient(a);
-        draw_text(
-            format!("a: {}, v->m: {}->{}", a, v, m).as_str(),
-            v.x,
-            v.y,
-            18.,
-            WHITE,
-        );
+        game.player_object
+            .as_ref()
+            .borrow_mut()
+            .update_orientation(a);
         draw_line(v.x, v.y, m.x, m.y, 2., GREEN);
-        // draw_circle(v.x, v.y, 10., RED);
+        draw_circle(v.x, v.y, 10., RED); // draw a point under the player
         draw_text(
             format!(
                 "{}",
@@ -327,14 +323,6 @@ async fn main() {
                 )
                 .as_str(),
             );
-            // if ui.button(None, "Sort Map") {
-            //     draw_queue.sort_by(|(a, _), (b, _)| a.z.partial_cmp(&b.z).unwrap());
-            // }
-            // for (i, (e, id)) in draw_queue.clone().iter().enumerate() {
-            //     if ui.button(None, format!("{i}: {e}",).as_str()) {
-            //         draw_queue.remove(i);
-            //     }
-            // }
         });
         if is_mouse_button_down(MouseButton::Right) {
             root_ui().window(hash!(), mouse_position().into(), vec2(100., 200.), |ui| {
@@ -345,6 +333,12 @@ async fn main() {
                 }
             });
         }
+        let mut inventory_rect = Rect::new(
+            screen_width() / 2.0 - 100.,
+            screen_height() - 50.,
+            200.,
+            50.,
+        );
         next_frame().await;
     }
 }
