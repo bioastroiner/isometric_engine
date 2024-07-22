@@ -1,12 +1,12 @@
 use macroquad::{
     color::{hsl_to_rgb, rgb_to_hsl, WHITE},
     logging::debug,
-    math::{vec3, Vec2, Vec3, Vec3Swizzles},
+    math::{vec3, FloatExt, Vec2, Vec3, Vec3Swizzles}, time::get_time,
 };
 
 use crate::{
-    constants, draw_tile, draw_tile_margin_color, flatten_iso, render, Game, PlayerOrient,
-    TILE_SIZE,
+    cmp_tiles, constants, draw_tile, draw_tile_ex, flatten_iso, render, DrawTilesParams, Game,
+    PlayerOrient, TILE_SIZE,
 };
 
 #[derive(Debug)]
@@ -102,8 +102,7 @@ impl ISOGraphics for Block {
     fn render(&self, game_state: &Game) {
         let mut c = WHITE;
         let mut light = 1.;
-        let player_pos = game_state.player_object.clone().as_ref().borrow().pos();
-
+        let player_pos = game_state.player().pos();
         for i in 1..8 {
             if game_state
                 .world
@@ -140,13 +139,31 @@ impl ISOGraphics for Block {
             // this kinda cool, uncomment this if u want it to look like light
             // let a = dist_to_player.recip() * 1.2;
             c.a = a;
-            draw_tile_margin_color(
+            match cmp_tiles(self.pos(), player_pos) {
+                std::cmp::Ordering::Less => (), // block is rendered below player (further from camera)
+                std::cmp::Ordering::Equal => (), // block is same spot as player
+                std::cmp::Ordering::Greater => {
+                    // block is rendered on top of player (closer to camera)
+                    if flatten_iso(self.pos.floor())
+                        .distance(flatten_iso(player_pos))
+                        .abs()
+                        < 2.
+                    {
+                        if self.pos.z.ne(&player_pos.z) {
+                            c.a = 0.1;
+                        }
+                    }
+                }
+            };
+            draw_tile_ex(
                 p.x,
                 p.y,
                 TILE_SIZE,
                 &game_state.block_textures[self.block_id as usize],
-                1.,
-                c,
+                DrawTilesParams {
+                    margin: (1., 1.),
+                    color: c,
+                },
             );
         }
     }

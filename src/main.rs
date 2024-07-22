@@ -7,10 +7,9 @@ use render::*;
 use world::World;
 
 use std::{
-    borrow::Borrow,
-    cell::RefCell,
+    cell::{Ref, RefCell, RefMut},
+    cmp::Ordering,
     collections::HashMap,
-    env::{self, Args},
     rc::Rc,
 };
 
@@ -42,6 +41,31 @@ struct Game {
     player_object: Rc<RefCell<Player>>,
     world: Box<World>,
 }
+impl Game {
+    fn player(&self) -> Ref<Player> {
+        self.player_object.as_ref().borrow()
+    }
+    fn player_mut(&self) -> RefMut<Player> {
+        self.player_object.as_ref().borrow_mut()
+    }
+}
+#[inline]
+fn cmp_tiles(lhs: Vec3, rhs: Vec3) -> Ordering {
+    (lhs.x + lhs.y + lhs.z)
+        .partial_cmp(&(rhs.x + rhs.y + rhs.z))
+        .unwrap()
+}
+#[test]
+fn cmp_tiles_test() {
+    assert_eq!(
+        cmp_tiles((0., 0., 1.).into(), (1., 1., 2.).into()),
+        Ordering::Less
+    ); //scenario: player is below a tile that appears above the player
+    assert_eq!(
+        cmp_tiles((0., 0., 1.).into(), (-1., -1., 0.).into()),
+        Ordering::Greater
+    ); //scenario: player is below a tile that appears below the player
+}
 /// for when you want to get a point under a tile or object well centered for use with camera 2d
 /// or screen space (for that you first need to use Camera::world_to_space function in order to transform that into screen space from 2d world space)
 #[inline]
@@ -63,7 +87,7 @@ fn is_on_screen(pos: Vec3, cam: &Camera2D) -> bool {
 }
 #[macroquad::main("Isometric Engine")]
 async fn main() {
-    for (i, argument) in env::args().enumerate() {
+    for (i, argument) in std::env::args().enumerate() {
         println!("{i}: {argument}");
     }
     // load textures into GPU
@@ -157,13 +181,6 @@ async fn main() {
     let lower_limit = camera.zoom / 3.;
     let upper_limit = camera.zoom * 3.;
 
-    // render layers
-    // each z is a layers
-    // tile layer
-    // decoration layer (like flowers, rocks, ...)
-    // player layer (always renders on top)
-    // stuff like roofs that have higher Z than player will not render temporary when players under (so it dosent make the player look like its on top of it rather)
-
     let mut draw_queue: Vec<Rc<RefCell<dyn ISOGraphics>>> = Vec::with_capacity(1000);
     draw_queue.push(game.player_object.clone());
     // unload blocks from storage into render queue
@@ -242,9 +259,7 @@ async fn main() {
         // update physics
         let vel = game.player_object.as_ref().borrow().vel();
         let pos = game.player_object.as_ref().borrow().pos();
-        game.player_object
-            .borrow_mut()
-            .set_pos(pos + vel * get_frame_time());
+        game.player_mut().set_pos(pos + vel * get_frame_time());
         // player.pos += player.vel * get_frame_time();
 
         // render
@@ -309,6 +324,13 @@ async fn main() {
         );
         // draw_text(format!("{b}").as_str(), 40., 30., 14., WHITE);
         pop_camera_state();
+        // draw a tile over the player for debug reasons
+        draw_tile(
+            flatten_iso(player_pos).x,
+            flatten_iso(player_pos).y,
+            TILE_SIZE,
+            &game.block_textures[1],
+        );
         root_ui().group(hash!(), vec2(200., 400.), |ui| {
             ui.button(
                 None,

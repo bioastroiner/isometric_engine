@@ -23,44 +23,47 @@ pub fn draw_tile_color(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2
         },
     );
 }
-#[inline]
-pub fn draw_tile(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D) {
-    draw_tile_color(x, y, tile_size, texture, WHITE);
+#[derive(Debug, Clone)]
+pub struct DrawTilesParams {
+    pub margin: (f32, f32),
+    pub color: Color,
 }
-#[inline]
-pub fn draw_tile_margin(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D, margin: f32) {
-    let (x, y) = transform_tile(x - 1., y - 1., tile_size);
-    draw_texture_ex(
-        texture,
-        x + margin,
-        y + margin,
-        WHITE,
-        DrawTextureParams {
-            dest_size: Some((tile_size.0 - margin, tile_size.1 - margin).into()),
-            ..Default::default()
-        },
-    );
+impl Default for DrawTilesParams {
+    fn default() -> Self {
+        Self {
+            margin: Default::default(),
+            color: WHITE,
+        }
+    }
 }
-#[inline]
-pub fn draw_tile_margin_color(
+pub fn draw_tile_ex(
     x: f32,
     y: f32,
     tile_size: (f32, f32),
     texture: &Texture2D,
-    margin: f32,
-    color: Color,
+    options: DrawTilesParams,
 ) {
     let (x, y) = transform_tile(x - 1., y - 1., tile_size);
     draw_texture_ex(
         texture,
-        x + margin,
-        y + margin,
-        color,
+        x + options.margin.0,
+        y + options.margin.1,
+        options.color,
         DrawTextureParams {
-            dest_size: Some((tile_size.0 - margin, tile_size.1 - margin).into()),
+            dest_size: Some(
+                (
+                    tile_size.0 - options.margin.0,
+                    tile_size.1 - options.margin.1,
+                )
+                    .into(),
+            ),
             ..Default::default()
         },
     );
+}
+#[inline]
+pub fn draw_tile(x: f32, y: f32, tile_size: (f32, f32), texture: &Texture2D) {
+    draw_tile_ex(x, y, tile_size, texture, DrawTilesParams::default());
 }
 
 #[inline]
