@@ -1,7 +1,8 @@
 use macroquad::{
     color::{hsl_to_rgb, rgb_to_hsl, WHITE},
     logging::debug,
-    math::{vec3, FloatExt, Vec2, Vec3, Vec3Swizzles}, time::get_time,
+    math::{vec3, FloatExt, Vec2, Vec3, Vec3Swizzles},
+    time::get_time,
 };
 
 use crate::{
@@ -102,6 +103,7 @@ impl ISOGraphics for Block {
     fn render(&self, game_state: &Game) {
         let mut c = WHITE;
         let mut light = 1.;
+        let mut margin = 1.;
         let player_pos = game_state.player().pos();
         for i in 1..8 {
             if game_state
@@ -150,7 +152,8 @@ impl ISOGraphics for Block {
                         < 2.
                     {
                         if self.pos.z.ne(&player_pos.z) {
-                            c.a = 0.1;
+                            c.a = 0.3;
+                            margin = 8.;
                         }
                     }
                 }
@@ -161,7 +164,7 @@ impl ISOGraphics for Block {
                 TILE_SIZE,
                 &game_state.block_textures[self.block_id as usize],
                 DrawTilesParams {
-                    margin: (1., 1.),
+                    margin: (margin, margin),
                     color: c,
                 },
             );

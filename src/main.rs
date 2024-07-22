@@ -2,21 +2,18 @@ pub mod math;
 pub mod render;
 
 use math::*;
-use objects::{ISOGraphics, ISOObject, ISOPhysic, Player};
+use objects::*;
 use render::*;
 use world::World;
 
 use std::{
     cell::{Ref, RefCell, RefMut},
-    cmp::Ordering,
+    cmp::{min, Ordering},
     collections::HashMap,
     rc::Rc,
 };
 
-use macroquad::{
-    prelude::*,
-    ui::{hash, root_ui, Skin},
-};
+use macroquad::{prelude::*, ui::*};
 
 mod objects;
 mod world;
@@ -40,6 +37,7 @@ struct Game {
     player_textures: HashMap<PlayerOrient, Texture2D>,
     player_object: Rc<RefCell<Player>>,
     world: Box<World>,
+    debug: bool,
 }
 impl Game {
     fn player(&self) -> Ref<Player> {
@@ -164,11 +162,12 @@ async fn main() {
     _world.set_block(10, 10, 3 + 2, 6);
     _world.set_block(11, 10, 3 + 2, 6);
     _world.set_block(12, 10, 3 + 2, 6);
-    let game = Game {
+    let mut game = Game {
         block_textures: _tiles,
         player_object: _player,
         world: _world,
         player_textures: _player_textures,
+        debug: true,
     };
 
     let mut camera = Camera2D::from_display_rect(Rect {
@@ -205,23 +204,25 @@ async fn main() {
         }
 
         clear_background(BLACK);
-        draw_isometric_axis(vec2(0., 0.), 10., TILE_SIZE);
         let camera_screen_world =
             camera.screen_to_world(vec2(mouse_position().0, mouse_position().1));
-        draw_rectangle_lines(
-            camera_screen_world.x - 50.,
-            camera_screen_world.y - 50.,
-            100.,
-            100.,
-            5.,
-            WHITE,
-        );
         let csw_in_isometric = iso_to_world(camera_screen_world, TILE_SIZE);
         let grid_pos = Vec2 {
             x: csw_in_isometric.x - 4.,
             y: csw_in_isometric.y - 4.,
         };
-        draw_isometric_grid(grid_pos, 10., TILE_SIZE);
+        if game.debug {
+            draw_isometric_axis(vec2(0., 0.), 10., TILE_SIZE);
+            draw_rectangle_lines(
+                camera_screen_world.x - 50.,
+                camera_screen_world.y - 50.,
+                100.,
+                100.,
+                5.,
+                WHITE,
+            );
+            draw_isometric_grid(grid_pos, 10., TILE_SIZE);
+        }
 
         // update players physics
         let player_pos = game.player_object.as_ref().borrow().pos();
@@ -231,7 +232,7 @@ async fn main() {
             direction2d.y,
             game.player_object.as_ref().borrow().vel().z,
         );
-        if is_key_down(KeyCode::W) {
+        if is_key_down(miniquad::KeyCode::W) {
             if !direction.is_nan() && direction.length() > 0.5 {
                 game.player_object.borrow_mut().set_vel(direction * 2.);
                 // player.pos += direction * player_speed * get_frame_time();
@@ -271,20 +272,22 @@ async fn main() {
         // cursor
         // draw_tile(curser_pos_iso.x, curser_pos_iso.y, tile_size, &tiles[1]);
         let h_pos = vec2(curser_pos_iso.x, curser_pos_iso.y);
-        draw_hexagon(
-            tile_matrix(TILE_SIZE).mul_vec2(h_pos).x + TILE_SIZE.0 / 2.,
-            tile_matrix(TILE_SIZE).mul_vec2(h_pos).y,
-            TILE_SIZE.0 / 2.,
-            1.,
-            true,
-            Color::new(
-                ((get_time() as f32).sin() + 1.0) / 2.0,
-                ((get_time() as f32).cos() + 1.0) / 2.,
-                1.0,
-                1.0,
-            ),
-            Color::new(0., 0., 0., 0.),
-        );
+        if game.debug {
+            draw_hexagon(
+                tile_matrix(TILE_SIZE).mul_vec2(h_pos).x + TILE_SIZE.0 / 2.,
+                tile_matrix(TILE_SIZE).mul_vec2(h_pos).y,
+                TILE_SIZE.0 / 2.,
+                1.,
+                true,
+                Color::new(
+                    ((get_time() as f32).sin() + 1.0) / 2.0,
+                    ((get_time() as f32).cos() + 1.0) / 2.,
+                    1.0,
+                    1.0,
+                ),
+                Color::new(0., 0., 0., 0.),
+            );
+        }
 
         push_camera_state();
         set_default_camera();
@@ -305,33 +308,38 @@ async fn main() {
         if a.is_sign_negative() {
             a = a + 360.;
         }
-        game.player_object
-            .as_ref()
-            .borrow_mut()
-            .update_orientation(a);
-        draw_line(v.x, v.y, m.x, m.y, 2., GREEN);
-        draw_circle(v.x, v.y, 10., RED); // draw a point under the player
-        draw_text(
-            format!(
-                "{}",
-                vec2(csw_in_isometric.x.floor(), csw_in_isometric.y.ceil())
-            )
-            .as_str(),
-            mouse_position().0,
-            mouse_position().1,
-            18.,
-            YELLOW,
-        );
-        // draw_text(format!("{b}").as_str(), 40., 30., 14., WHITE);
+        game.player_mut().update_orientation(a);
+        if game.debug {
+            draw_line(v.x, v.y, m.x, m.y, 2., GREEN);
+            draw_circle(v.x, v.y, 10., RED); // draw a point under the player
+            draw_text(
+                format!(
+                    "{}",
+                    vec2(csw_in_isometric.x.floor(), csw_in_isometric.y.ceil())
+                )
+                .as_str(),
+                mouse_position().0,
+                mouse_position().1,
+                18.,
+                YELLOW,
+            );
+        }
         pop_camera_state();
         // draw a tile over the player for debug reasons
-        draw_tile(
-            flatten_iso(player_pos).x,
-            flatten_iso(player_pos).y,
-            TILE_SIZE,
-            &game.block_textures[1],
-        );
+        if game.debug {
+            draw_tile(
+                flatten_iso(player_pos).x,
+                flatten_iso(player_pos).y,
+                TILE_SIZE,
+                &game.block_textures[1],
+            );
+        }
         root_ui().group(hash!(), vec2(200., 400.), |ui| {
+            game.debug = if ui.button(None, format!("Debug Mode: {}", game.debug).as_str()) {
+                !game.debug
+            } else {
+                game.debug
+            };
             ui.button(
                 None,
                 format!("Player: {}", game.player_object.as_ref().borrow().pos()).as_str(),
@@ -355,12 +363,6 @@ async fn main() {
                 }
             });
         }
-        let mut inventory_rect = Rect::new(
-            screen_width() / 2.0 - 100.,
-            screen_height() - 50.,
-            200.,
-            50.,
-        );
         next_frame().await;
     }
 }
