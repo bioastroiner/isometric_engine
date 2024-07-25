@@ -2,15 +2,18 @@ pub mod math;
 pub mod render;
 
 use math::*;
+use miniquad::log;
 use objects::*;
 use render::*;
 use world::World;
 
 use std::{
+    backtrace::Backtrace,
     cell::{Ref, RefCell, RefMut},
     cmp::{min, Ordering},
     collections::HashMap,
     rc::Rc,
+    thread::{self, Thread},
 };
 
 use macroquad::{prelude::*, ui::*};
@@ -85,9 +88,6 @@ fn is_on_screen(pos: Vec3, cam: &Camera2D) -> bool {
 }
 #[macroquad::main("Isometric Engine")]
 async fn main() {
-    for (i, argument) in std::env::args().enumerate() {
-        println!("{i}: {argument}");
-    }
     // load textures into GPU
     // items here are named as _name bec they are moved to gamestate pls dont refrence them
     let mut _tiles: Vec<Texture2D> = Vec::new();

@@ -140,24 +140,31 @@ impl ISOGraphics for Block {
             };
             // this kinda cool, uncomment this if u want it to look like light
             // let a = dist_to_player.recip() * 1.2;
-            c.a = a;
-            match cmp_tiles(self.pos(), player_pos) {
-                std::cmp::Ordering::Less => (), // block is rendered below player (further from camera)
-                std::cmp::Ordering::Equal => (), // block is same spot as player
-                std::cmp::Ordering::Greater => {
-                    // block is rendered on top of player (closer to camera)
-                    if flatten_iso(self.pos.floor())
-                        .distance(flatten_iso(player_pos))
-                        .abs()
-                        < 2.
-                    {
-                        if self.pos.z.ne(&player_pos.z) {
-                            c.a = 0.3;
-                            margin = 8.;
+            let (h, s, mut l) = rgb_to_hsl(c);
+            l = a;
+            c = hsl_to_rgb(h, s, l);
+            // c.a = a;
+            /* Glass view */
+            {
+                let bubble_size = 2.;
+                match cmp_tiles(self.pos(), player_pos) {
+                    std::cmp::Ordering::Less => (), // block is rendered below player (further from camera)
+                    std::cmp::Ordering::Equal => (), // block is same spot as player
+                    std::cmp::Ordering::Greater => {
+                        // block is rendered on top of player (closer to camera)
+                        if flatten_iso(self.pos.floor())
+                            .distance(flatten_iso(player_pos))
+                            .abs()
+                            < bubble_size
+                        {
+                            if self.pos.z.ne(&player_pos.z) {
+                                c.a = dist_to_player * 0.2;
+                                // margin = 8.;
+                            }
                         }
                     }
-                }
-            };
+                };
+            }
             draw_tile_ex(
                 p.x,
                 p.y,
