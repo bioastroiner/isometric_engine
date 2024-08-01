@@ -2,7 +2,7 @@ pub mod math;
 pub mod render;
 
 use math::*;
-use miniquad::log;
+use miniquad::{log, window::screen_size, BlendState};
 use objects::*;
 use render::*;
 use world::World;
@@ -16,7 +16,7 @@ use std::{
     thread::{self, Thread},
 };
 
-use macroquad::{prelude::*, ui::*};
+use macroquad::{material, models, prelude::*, ui::*};
 
 mod objects;
 mod world;
@@ -24,6 +24,7 @@ mod constants {
     pub const TILE_SIZE: (f32, f32) = (64.0, 64.0);
 }
 use constants::*;
+
 #[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
 enum PlayerOrient {
     _0 = 0,
@@ -41,6 +42,9 @@ struct Game {
     player_object: Rc<RefCell<Player>>,
     world: Box<World>,
     debug: bool,
+    draw_queue: Vec<Rc<RefCell<dyn Renderble>>>,
+    block_material: Material,
+    // buffer_queue: Vec<Rc<RefCell<dyn ISOGraphics>>>, // todo: a buffer for holding old data in draw queue to be moved out or into draw queue on player discovery of new visible chunk
 }
 impl Game {
     fn player(&self) -> Ref<Player> {
@@ -88,6 +92,8 @@ fn is_on_screen(pos: Vec3, cam: &Camera2D) -> bool {
 }
 #[macroquad::main("Isometric Engine")]
 async fn main() {
+    let quad_gl = unsafe { get_internal_gl().quad_gl };
+    let quad_context = unsafe { get_internal_gl().quad_context };
     // load textures into GPU
     // items here are named as _name bec they are moved to gamestate pls dont refrence them
     let mut _tiles: Vec<Texture2D> = Vec::new();
@@ -168,6 +174,42 @@ async fn main() {
         world: _world,
         player_textures: _player_textures,
         debug: true,
+        draw_queue: Vec::with_capacity(1000),
+        block_material: material::load_material(
+            ShaderSource::Glsl {
+                vertex: include_str!("shader.vs"),
+                fragment: include_str!("shader.fs"),
+            },
+            MaterialParams {
+                uniforms: vec![
+                    ("player_gl_pos".to_string(), UniformType::Float2),
+                    ("mouse".to_string(), UniformType::Float2),
+                    ("resolution".to_string(), UniformType::Float2),
+                    ("resolution_cam".to_string(), UniformType::Float2),
+                    ("camera_zoom".to_string(), UniformType::Float2),
+                    ("player_dist".to_string(), UniformType::Float1),
+                    ("player_world_pos".to_string(), UniformType::Float3),
+                    ("block_world_pos".to_string(), UniformType::Float3),
+                ],
+                pipeline_params: PipelineParams {
+                    depth_write: true,
+                    depth_test: Comparison::LessOrEqual,
+                    color_blend: Some(BlendState::new(
+                        miniquad::Equation::Add,
+                        miniquad::BlendFactor::Value(miniquad::BlendValue::SourceAlpha),
+                        miniquad::BlendFactor::OneMinusValue(miniquad::BlendValue::SourceAlpha),
+                    )),
+                    alpha_blend: Some(BlendState::new(
+                        miniquad::Equation::Add,
+                        miniquad::BlendFactor::Zero,
+                        miniquad::BlendFactor::One,
+                    )),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .unwrap(),
     };
 
     let mut camera = Camera2D::from_display_rect(Rect {
@@ -180,16 +222,23 @@ async fn main() {
     let lower_limit = camera.zoom / 3.;
     let upper_limit = camera.zoom * 3.;
 
-    let mut draw_queue: Vec<Rc<RefCell<dyn ISOGraphics>>> = Vec::with_capacity(1000);
-    draw_queue.push(game.player_object.clone());
+    // let mut draw_queue: Vec<Rc<RefCell<dyn ISOGraphics>>> = Vec::with_capacity(1000);
+    game.draw_queue.push(game.player_object.clone());
     // unload blocks from storage into render queue
     // todo: Later do something with dynamic loading where we only load a portion of visible map
     for ele in game.world.blocks() {
-        draw_queue.push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
+        game.draw_queue
+            .push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
     }
     let mut curser_pos_iso = vec2(0., 0.);
     loop {
-        draw_queue.sort_by(|a, b| {
+        game.block_material.set_uniform("mouse", mouse_position());
+        game.block_material.set_uniform("resolution", screen_size());
+        game.block_material.set_uniform(
+            "resolution_cam",
+            camera.screen_to_world(screen_size().into()),
+        );
+        game.draw_queue.sort_by(|a, b| {
             let a = a.as_ref().borrow();
             let b = b.as_ref().borrow();
             (a.pos().y + a.pos().x + a.pos().z)
@@ -199,9 +248,10 @@ async fn main() {
 
         set_camera(&camera);
         if mouse_wheel().1.abs() > 0. {
-            camera.zoom += mouse_wheel().1 * get_frame_time() * 240f32.recip();
+            camera.zoom += mouse_wheel().1 * get_frame_time() * 0.0001;
             camera.zoom = camera.zoom.clamp(lower_limit, upper_limit);
         }
+        game.block_material.set_uniform("camera_zoom", camera.zoom);
 
         clear_background(BLACK);
         let camera_screen_world =
@@ -226,6 +276,8 @@ async fn main() {
 
         // update players physics
         let player_pos = game.player_object.as_ref().borrow().pos();
+        game.block_material
+            .set_uniform("player_world_pos", player_pos);
         let direction2d = -(player_pos.xy() - curser_pos_iso).normalize();
         let direction = vec3(
             direction2d.x,
@@ -241,30 +293,11 @@ async fn main() {
             let z = game.player_object.as_ref().borrow().vel().z;
             game.player_object.borrow_mut().set_vel(vec3(0., 0., z));
         }
-        // todo jumping
-        // if is_key_down(KeyCode::Space) && !player.is_jumping && (player.vel.x < 0.1 || player.vel.y < 1.0) {
-        //     debug!("Jumped");
-        //     player.vel += vec3(0., 0., 15.);
-        //     player.is_jumping = true;
-        // }
-        // if player.is_jumping {
-        //     debug!("Jumping");
-        //     player.vel -= vec3(0., 0., 2.);
-        //     if player.pos.z < 1. {
-        //         debug!("Hit ground");
-        //         player.vel.z = 0.;
-        //         player.pos.z = 1.;
-        //         player.is_jumping = false;
-        //     }
-        // }
         // update physics
         let vel = game.player_object.as_ref().borrow().vel();
         let pos = game.player_object.as_ref().borrow().pos();
         game.player_mut().set_pos(pos + vel * get_frame_time());
-        // player.pos += player.vel * get_frame_time();
-
-        // render
-        for el in draw_queue.iter() {
+        for el in game.draw_queue.iter() {
             let renderable = el.as_ref().borrow();
             renderable.render(&game);
         }
@@ -292,9 +325,11 @@ async fn main() {
         push_camera_state();
         set_default_camera();
         let v = in_2d(player_pos);
+        // send player position on screen to gpu
         // move camera with player
         camera.target = v;
         let v = camera.world_to_screen(v);
+        game.block_material.set_uniform("player_gl_pos", v);
         let m: Vec2 = mouse_position().into();
         // hack: convert angle between player's pos to mouse pos to a format we care about
         // 0 starts at right goes to left and up and ends at 360 on right
@@ -308,16 +343,13 @@ async fn main() {
         if a.is_sign_negative() {
             a = a + 360.;
         }
+        let tile_under_mouse = csw_in_isometric.floor();
         game.player_mut().update_orientation(a);
         if game.debug {
             draw_line(v.x, v.y, m.x, m.y, 2., GREEN);
             draw_circle(v.x, v.y, 10., RED); // draw a point under the player
             draw_text(
-                format!(
-                    "{}",
-                    vec2(csw_in_isometric.x.floor(), csw_in_isometric.y.ceil())
-                )
-                .as_str(),
+                format!("{}", tile_under_mouse).as_str(),
                 mouse_position().0,
                 mouse_position().1,
                 18.,
@@ -344,6 +376,7 @@ async fn main() {
                 None,
                 format!("Player: {}", game.player_object.as_ref().borrow().pos()).as_str(),
             );
+            ui.button(None, format!("Cursor: {tile_under_mouse}").as_str());
             ui.button(None, format!("FPS: {}", get_fps()).as_str());
             ui.button(
                 None,
@@ -352,6 +385,10 @@ async fn main() {
                     game.player_object.as_ref().borrow().orient
                 )
                 .as_str(),
+            );
+            ui.button(
+                None,
+                format!("Render Queue: {}", game.draw_queue.len()).as_str(),
             );
         });
         if is_mouse_button_down(MouseButton::Right) {
