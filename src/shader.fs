@@ -29,6 +29,7 @@ int cmp_tile(vec3 lhs, vec3 rhs) {
     return 0;
 }
 
+// https://computergraphics.stackexchange.com/questions/5724/glsl-can-someone-explain-why-gl-fragcoord-xy-screensize-is-performed-and-for
 float player_glass() {
     lowp float a = 1.0;
     lowp float r = 40.0;

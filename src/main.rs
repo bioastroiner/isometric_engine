@@ -8,7 +8,6 @@ use render::*;
 use world::World;
 
 use std::{
-    backtrace::Backtrace,
     cell::{Ref, RefCell, RefMut},
     cmp::{min, Ordering},
     collections::HashMap,
@@ -75,7 +74,6 @@ fn cmp_tiles_test() {
 /// or screen space (for that you first need to use Camera::world_to_space function in order to transform that into screen space from 2d world space)
 #[inline]
 fn in_2d(pos: Vec3) -> Vec2 {
-    let pp = pos;
     let pp = flatten_iso(pos);
     let pp = world_to_is(pp, TILE_SIZE);
     let pp = pp
@@ -90,20 +88,7 @@ fn is_on_screen(pos: Vec3, cam: &Camera2D) -> bool {
     let f = tile_matrix(TILE_SIZE).inverse().mul_vec2(f);
     r.contains(cam.world_to_screen(f))
 }
-#[macroquad::main("Isometric Engine")]
-async fn main() {
-    let quad_gl = unsafe { get_internal_gl().quad_gl };
-    let quad_context = unsafe { get_internal_gl().quad_context };
-    // load textures into GPU
-    // items here are named as _name bec they are moved to gamestate pls dont refrence them
-    let mut _tiles: Vec<Texture2D> = Vec::new();
-    _tiles.push(load_texture("empty.png").await.unwrap()); // this should not be rendered
-    _tiles.push(load_texture("tile_select.png").await.unwrap());
-    _tiles.push(load_texture("tile_frame.png").await.unwrap());
-    _tiles.push(load_texture("tile_grass.png").await.unwrap());
-    _tiles.push(load_texture("tile.png").await.unwrap());
-    _tiles.push(load_texture("tile_d.png").await.unwrap());
-    _tiles.push(load_texture("tile_machine.png").await.unwrap());
+async fn load_player_assets() -> HashMap<PlayerOrient, Texture2D> {
     let mut _player_textures = HashMap::new();
     _player_textures.insert(
         PlayerOrient::_225,
@@ -137,42 +122,59 @@ async fn main() {
         PlayerOrient::_0,
         load_texture("resources/player/0.png").await.unwrap(),
     );
-    for ele in &_tiles {
-        ele.set_filter(FilterMode::Nearest);
+    _player_textures
+        .iter_mut()
+        .for_each(|f| f.1.set_filter(FilterMode::Nearest));
+    _player_textures
+}
+async fn load_tiles_assets() -> Vec<Texture2D> {
+    let mut tiles: Vec<Texture2D> = Vec::new();
+    tiles.push(load_texture("empty.png").await.unwrap()); // this should not be rendered
+    tiles.push(load_texture("tile_select.png").await.unwrap());
+    tiles.push(load_texture("tile_frame.png").await.unwrap());
+    tiles.push(load_texture("tile_grass.png").await.unwrap());
+    tiles.push(load_texture("tile.png").await.unwrap());
+    tiles.push(load_texture("tile_d.png").await.unwrap());
+    tiles.push(load_texture("tile_machine.png").await.unwrap());
+    for tile in &tiles {
+        tile.set_filter(FilterMode::Nearest);
     }
-    build_textures_atlas();
-    // create Player
-    let _player: Rc<RefCell<Player>> = Rc::new(RefCell::new(objects::Player::new(
-        vec3(0., 0., 1.),
-        Vec3::ZERO,
-    )));
-    // gen world
-    let mut _world = Box::new(world::World::new());
+    tiles
+}
+fn generate_world(world: &mut World) {
     for i in 0..50 {
         for j in 0..50 {
             //ground
-            _world.set_block(i, j, 0, 3);
+            world.set_block(i, j, 0, 3);
             // hill
             if (5..=8).contains(&i) && (3..=6).contains(&j) {
-                _world.set_block(i, j, 2, 3);
-                _world.set_block(i, j, 4, 3);
+                world.set_block(i, j, 2, 3);
+                world.set_block(i, j, 4, 3);
             }
             if i > 0 && i < 3 && j > 0 && j < 3 {
-                _world.set_block(i, j, 4, 3);
+                world.set_block(i, j, 4, 3);
             }
         }
     }
-    _world.set_block(10, 10, 1, 6);
-    _world.set_block(11, 10, 1, 6);
-    _world.set_block(12, 10, 1, 6);
-    _world.set_block(10, 10, 3 + 2, 6);
-    _world.set_block(11, 10, 3 + 2, 6);
-    _world.set_block(12, 10, 3 + 2, 6);
+    world.set_block(10, 10, 1, 6);
+    world.set_block(11, 10, 1, 6);
+    world.set_block(12, 10, 1, 6);
+    world.set_block(10, 10, 3 + 2, 6);
+    world.set_block(11, 10, 3 + 2, 6);
+    world.set_block(12, 10, 3 + 2, 6);
+}
+#[macroquad::main("Isometric Engine")]
+async fn main() {
+    let quad_gl = unsafe { get_internal_gl().quad_gl };
+    let quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
-        block_textures: _tiles,
-        player_object: _player,
-        world: _world,
-        player_textures: _player_textures,
+        block_textures: load_tiles_assets().await,
+        player_object: Rc::new(RefCell::new(objects::Player::new(
+            vec3(0., 0., 1.),
+            Vec3::ZERO,
+        ))),
+        world: Box::new(world::World::new()),
+        player_textures: load_player_assets().await,
         debug: true,
         draw_queue: Vec::with_capacity(1000),
         block_material: material::load_material(
@@ -211,7 +213,8 @@ async fn main() {
         )
         .unwrap(),
     };
-
+    build_textures_atlas();
+    generate_world(&mut game.world);
     let mut camera = Camera2D::from_display_rect(Rect {
         x: -500.,
         y: -500.,
@@ -337,11 +340,11 @@ async fn main() {
         let mut a = a + 180.; // clockwise to c-clockwise
                               // teach computers to do -theta = 360.-theta
         if a > 360. {
-            a = a - 360.;
+            a -= 360.;
         }
         a = -a;
         if a.is_sign_negative() {
-            a = a + 360.;
+            a += 360.;
         }
         let tile_under_mouse = csw_in_isometric.floor();
         game.player_mut().update_orientation(a);
