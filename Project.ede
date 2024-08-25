@@ -1,0 +1,16 @@
+;; Object isometric_engine
+;; EDE Project Files are auto generated: Do Not Edit
+(ede-proj-project "isometric_engine"
+  :file "Project.ede"
+  :name "isometric_engine"
+  :targets
+  (list
+    (ede-proj-target-makefile-program "Release"
+      :object-name "Release"
+      :name "Release"
+      :path ""
+      :configuration-variables '("debug" ("CFLAGS" . "-g") ("LDFLAGS" . "-g"))))
+  :configurations '("debug" "release")
+  :object-name "isometric_engine"
+  :makefile-type Makefile
+  :configuration-variables '("debug" (("DEBUG" . "1"))))

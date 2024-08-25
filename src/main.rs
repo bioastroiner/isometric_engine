@@ -2,20 +2,18 @@ pub mod math;
 pub mod render;
 
 use math::*;
-use miniquad::{log, window::screen_size, BlendState};
+use miniquad::{window::screen_size, BlendState};
 use objects::*;
 use render::*;
 use world::World;
 
 use std::{
     cell::{Ref, RefCell, RefMut},
-    cmp::{min, Ordering},
+    cmp::Ordering,
     collections::HashMap,
     rc::Rc,
-    thread::{self, Thread},
 };
-
-use macroquad::{material, models, prelude::*, ui::*};
+use macroquad::{material, prelude::*, ui::*};
 
 mod objects;
 mod world;
@@ -76,10 +74,9 @@ fn cmp_tiles_test() {
 fn in_2d(pos: Vec3) -> Vec2 {
     let pp = flatten_iso(pos);
     let pp = world_to_is(pp, TILE_SIZE);
-    let pp = pp
-        .with_x(pp.x + TILE_SIZE.0 / 2.)
-        .with_y(pp.y + TILE_SIZE.1 / 2.);
-    pp
+
+    pp.with_x(pp.x + TILE_SIZE.0 / 2.)
+        .with_y(pp.y + TILE_SIZE.1 / 2.)
 }
 /// tests if a block exists on screen (not necesserly visible)
 fn is_on_screen(pos: Vec3, cam: &Camera2D) -> bool {
@@ -88,39 +85,47 @@ fn is_on_screen(pos: Vec3, cam: &Camera2D) -> bool {
     let f = tile_matrix(TILE_SIZE).inverse().mul_vec2(f);
     r.contains(cam.world_to_screen(f))
 }
-async fn load_player_assets() -> HashMap<PlayerOrient, Texture2D> {
+fn load_player_assets() -> HashMap<PlayerOrient, Texture2D> {
     let mut _player_textures = HashMap::new();
     _player_textures.insert(
         PlayerOrient::_225,
-        load_texture("resources/player/225.png").await.unwrap(),
+        Texture2D::from_file_with_format(include_bytes!("../resources/player/225.png"),Some(ImageFormat::Png)),
+//        load_texture("resources/player/225.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_315,
-        load_texture("resources/player/315.png").await.unwrap(),
+        Texture2D::from_file_with_format(include_bytes!("../resources/player/315.png"),Some(ImageFormat::Png)),
+        //load_texture("resources/player/315.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_45,
-        load_texture("resources/player/45.png").await.unwrap(),
+        Texture2D::from_file_with_format(include_bytes!("../resources/player/45.png"),Some(ImageFormat::Png)),
+        //load_texture("resources/player/45.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_135,
-        load_texture("resources/player/135.png").await.unwrap(),
+        Texture2D::from_file_with_format(include_bytes!("../resources/player/135.png"),Some(ImageFormat::Png)),
+        // load_texture("resources/player/135.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_270,
-        load_texture("resources/player/270.png").await.unwrap(),
+        Texture2D::from_file_with_format(include_bytes!("../resources/player/270.png"),Some(ImageFormat::Png)),
+        // load_texture("resources/player/270.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_90,
-        load_texture("resources/player/90.png").await.unwrap(),
+        Texture2D::from_file_with_format(include_bytes!("../resources/player/90.png"),Some(ImageFormat::Png)),
+        // load_texture("resources/player/90.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_180,
-        load_texture("resources/player/180.png").await.unwrap(),
+        Texture2D::from_file_with_format(include_bytes!("../resources/player/180.png"),Some(ImageFormat::Png)),
+        // load_texture("resources/player/180.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_0,
-        load_texture("resources/player/0.png").await.unwrap(),
+        Texture2D::from_file_with_format(include_bytes!("../resources/player/0.png"),Some(ImageFormat::Png)),
+        // load_texture("resources/player/0.png").await.unwrap(),
     );
     _player_textures
         .iter_mut()
@@ -129,13 +134,14 @@ async fn load_player_assets() -> HashMap<PlayerOrient, Texture2D> {
 }
 async fn load_tiles_assets() -> Vec<Texture2D> {
     let mut tiles: Vec<Texture2D> = Vec::new();
-    tiles.push(load_texture("empty.png").await.unwrap()); // this should not be rendered
-    tiles.push(load_texture("tile_select.png").await.unwrap());
-    tiles.push(load_texture("tile_frame.png").await.unwrap());
-    tiles.push(load_texture("tile_grass.png").await.unwrap());
-    tiles.push(load_texture("tile.png").await.unwrap());
-    tiles.push(load_texture("tile_d.png").await.unwrap());
-    tiles.push(load_texture("tile_machine.png").await.unwrap());
+    tiles.push(Texture2D::from_file_with_format(include_bytes!("../empty.png"),Some(ImageFormat::Png)));
+    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_select.png"),Some(ImageFormat::Png)));
+    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_frame.png"),Some(ImageFormat::Png)));
+    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_grass.png"),Some(ImageFormat::Png)));
+    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile.png"),Some(ImageFormat::Png)));
+    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_d.png"),Some(ImageFormat::Png)));
+    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_machine.png"),Some(ImageFormat::Png)));
+    // tles.push(load_texture("tile_machine.png").await.unwrap());
     for tile in &tiles {
         tile.set_filter(FilterMode::Nearest);
     }
@@ -154,7 +160,8 @@ fn generate_world(world: &mut World) {
             if i > 0 && i < 3 && j > 0 && j < 3 {
                 world.set_block(i, j, 4, 3);
             }
-        }
+	}
+        
     }
     world.set_block(10, 10, 1, 6);
     world.set_block(11, 10, 1, 6);
@@ -165,8 +172,8 @@ fn generate_world(world: &mut World) {
 }
 #[macroquad::main("Isometric Engine")]
 async fn main() {
-    let quad_gl = unsafe { get_internal_gl().quad_gl };
-    let quad_context = unsafe { get_internal_gl().quad_context };
+    let _quad_gl = unsafe { get_internal_gl().quad_gl };
+    let _quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
         block_textures: load_tiles_assets().await,
         player_object: Rc::new(RefCell::new(objects::Player::new(
@@ -174,7 +181,7 @@ async fn main() {
             Vec3::ZERO,
         ))),
         world: Box::new(world::World::new()),
-        player_textures: load_player_assets().await,
+        player_textures: load_player_assets(),
         debug: true,
         draw_queue: Vec::with_capacity(1000),
         block_material: material::load_material(
@@ -211,7 +218,7 @@ async fn main() {
                 ..Default::default()
             },
         )
-        .unwrap(),
+            .unwrap(),
     };
     build_textures_atlas();
     generate_world(&mut game.world);

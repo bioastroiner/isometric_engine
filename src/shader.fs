@@ -20,9 +20,9 @@ uniform lowp vec3 block_world_pos; // position in the world (x,y,z) of the entir
 // if positive $lhs is on top of $rhs
 // if negetive $rhs is on top of $lhs
 // if 0 they are the same cordinates
-int cmp_tile(vec3 lhs, vec3 rhs) {
-    vec3 lhs = vec3(floor(lhs.x), floor(lhs.y), floor(lhs.z));
-    vec3 rhs = vec3(floor(rhs.x), floor(rhs.y), floor(rhs.z));
+int cmp_tile(vec3 lhs_in, vec3 rhs_in) {
+    vec3 lhs = vec3(floor(lhs_in.x), floor(lhs_in.y), floor(lhs_in.z));
+    vec3 rhs = vec3(floor(rhs_in.x), floor(rhs_in.y), floor(rhs_in.z));
     float r = (lhs.x + lhs.y + lhs.z) - (rhs.x + rhs.y + rhs.z);
     if (r < 0.0) return -1;
     if (r > 0.0) return +1;

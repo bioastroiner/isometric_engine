@@ -1,18 +1,11 @@
-use std::cmp::Ordering::{Equal, Greater, Less};
-
 use macroquad::{
-    camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera},
-    color::{hsl_to_rgb, rgb_to_hsl, WHITE},
-    logging::debug,
-    math::{vec3, FloatExt, Rect, Vec2, Vec3, Vec3Swizzles},
+    color::WHITE,
+    math::{Rect, Vec3},
     prelude::{gl_use_default_material, gl_use_material},
-    shapes::{draw_rectangle, draw_rectangle_lines},
-    time::get_time,
 };
 
 use crate::{
-    cmp_tiles, constants, draw_tile, draw_tile_ex, flatten_iso, render, DrawTilesParams, Game,
-    PlayerOrient, TILE_SIZE,
+    constants, draw_tile, draw_tile_ex, flatten_iso, DrawTilesParams, Game, PlayerOrient, TILE_SIZE,
 };
 
 #[derive(Debug)]
@@ -63,7 +56,6 @@ impl Player {
         ];
         if degrees > 360. - q || degrees < q {
             self.orient = PlayerOrient::_0;
-            return;
         } else {
             for e in ors {
                 if degrees > *e as i32 as f32 - q && degrees < *e as i32 as f32 + q {
@@ -106,7 +98,7 @@ impl Positionable for Block {
 const RENDER_DISTANCE: f32 = 8.;
 impl Renderble for Block {
     fn render(&self, game_state: &Game) {
-        let mut c = WHITE;
+        let c = WHITE;
         let player_pos = game_state.player().pos();
         let player_pos_i = flatten_iso(player_pos);
         let p = flatten_iso(self.pos);
@@ -114,7 +106,9 @@ impl Renderble for Block {
         game_state
             .block_material
             .set_uniform("player_dist", dist_to_player);
-        game_state.block_material.set_uniform("block_world_pos", self.pos);
+        game_state
+            .block_material
+            .set_uniform("block_world_pos", self.pos);
         gl_use_material(&game_state.block_material);
         draw_tile_ex(
             p.x,

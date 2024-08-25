@@ -1,6 +1,4 @@
-use macroquad::{
-    math::{vec3, Vec3},
-};
+use macroquad::math::{vec3, Vec3};
 
 const WIDTH: usize = 256;
 const HEIGHT: usize = 64;
