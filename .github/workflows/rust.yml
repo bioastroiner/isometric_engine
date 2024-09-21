@@ -1,10 +1,12 @@
-name: Build & Run Server
+name: WASM Build, Deploy
+
+permissions: {}
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,24 +15,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    name: Checkout
-    uses: actions/checkout@v4
-    name: Install Rust toolchain
-    uses: dtolnay/rust-toolchain@stable
-    with:
-      target: wasm32-unknown-unknown
-    # name: Install Server
-    # uses: baptiste0928/cargo-install@v3
-    # with:
-    #   crate: basic-http-server
-    name: Build
-    run: cargo build --release --target wasm32-unknown-unknown
-    name: serve
-    run: basic-http-server .
-    name: Deploy to GitHub Pages
-    uses: crazy-max/ghaction-github-pages@v4
-    with:
-      target_branch: gh-pages
-      build_dir: public
+    - uses: actions/checkout@v4
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+          target: wasm32-unknown-unknown
+    - name: build
+      run: cargo build --release --target wasm32-unknown-unknown  
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Deploy to GitHub Pages
+      uses: crazy-max/ghaction-github-pages@v4
+      with:
+        target_branch: gh-pages
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.API_TOKEN_GITHUB_DEMO }}
