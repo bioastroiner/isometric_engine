@@ -23,7 +23,7 @@ mod constants {
 use constants::*;
 
 #[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
-enum PlayerOrient {
+pub(crate) enum PlayerOrient {
     _0 = 0,
     _45 = 45,
     _90 = 90,
@@ -33,7 +33,7 @@ enum PlayerOrient {
     _270 = 270,
     _315 = 315,
 }
-struct Game {
+pub(crate) struct Game {
     block_textures: Vec<Texture2D>,
     player_textures: HashMap<PlayerOrient, Texture2D>,
     player_object: Rc<RefCell<Player>>,
@@ -91,42 +91,34 @@ fn load_player_assets() -> HashMap<PlayerOrient, Texture2D> {
     _player_textures.insert(
         PlayerOrient::_225,
         Texture2D::from_file_with_format(include_bytes!("../resources/player/225.png"),Some(ImageFormat::Png)),
-//        load_texture("resources/player/225.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_315,
         Texture2D::from_file_with_format(include_bytes!("../resources/player/315.png"),Some(ImageFormat::Png)),
-        //load_texture("resources/player/315.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_45,
         Texture2D::from_file_with_format(include_bytes!("../resources/player/45.png"),Some(ImageFormat::Png)),
-        //load_texture("resources/player/45.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_135,
         Texture2D::from_file_with_format(include_bytes!("../resources/player/135.png"),Some(ImageFormat::Png)),
-        // load_texture("resources/player/135.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_270,
         Texture2D::from_file_with_format(include_bytes!("../resources/player/270.png"),Some(ImageFormat::Png)),
-        // load_texture("resources/player/270.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_90,
         Texture2D::from_file_with_format(include_bytes!("../resources/player/90.png"),Some(ImageFormat::Png)),
-        // load_texture("resources/player/90.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_180,
         Texture2D::from_file_with_format(include_bytes!("../resources/player/180.png"),Some(ImageFormat::Png)),
-        // load_texture("resources/player/180.png").await.unwrap(),
     );
     _player_textures.insert(
         PlayerOrient::_0,
         Texture2D::from_file_with_format(include_bytes!("../resources/player/0.png"),Some(ImageFormat::Png)),
-        // load_texture("resources/player/0.png").await.unwrap(),
     );
     _player_textures
         .iter_mut()
