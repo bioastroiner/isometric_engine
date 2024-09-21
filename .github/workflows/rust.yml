@@ -20,12 +20,43 @@ jobs:
       with:
           target: wasm32-unknown-unknown
     - name: Build Game
-      run: cargo build --release --target wasm32-unknown-unknown  
+      run: cargo build --release --target wasm32-unknown-unknown
+    - name: Gen dummy page
+      run: |
+        mkdir public
+        cp ./target/wasm32-unknown-unknown/release/isometric_engine.wasm public/isometric_engine.wasm
+        cat > public/index.html <<EOL
+        <html lang="en">
+        <head>
+        <meta charset="utf-8">
+        <title>MINECRAFT ISO</title>
+        <style>
+        html,
+        body,
+        canvas {
+            margin: 0px;
+            padding: 0px;
+            width: 75%;
+            height: 90%;
+            overflow: hidden;
+            position: relative;
+            background: purple;
+            z-index: 0;
+        }
+        </style>
+        </head>
+        <body>
+        <canvas id="glcanvas" tabindex='1'></canvas>
+        <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
+        <script>load("./isometric_engine.wasm");</script>
+        </body>
+        </html>
+        EOL
     - name: Deploy to GitHub Pages
       uses: crazy-max/ghaction-github-pages@v4
       with:
         target_branch: gh-pages
-        build_dir: .
+        build_dir: public
         verbose: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
