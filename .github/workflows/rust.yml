@@ -1,0 +1,27 @@
+name: Build & Run Server
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: setup rust
+      run: rustup target add wasm32-unknown-unknown
+    - name: setup server
+      run: cargo install basic-http-server
+    - name: Build
+      run: cargo build --release --target wasm32-unknown-unknown
+    - name: serve
+      run: basic-http-server .
+      
