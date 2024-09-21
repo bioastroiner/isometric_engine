@@ -1,7 +1,5 @@
 name: build and depl
 
-permissions: {}
-
 on:
   push:
     branches: [ "master" ]
@@ -9,6 +7,10 @@ on:
     branches: [ "master" ]
 env:
   CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+  pages: write
 
 jobs:
   build-and-deploy:
@@ -21,7 +23,7 @@ jobs:
           target: wasm32-unknown-unknown
     - name: Build Game
       run: cargo build --release --target wasm32-unknown-unknown
-    - name: Gen dummy page
+    - name: Pre Deployment
       run: |
         mkdir public
         cp ./target/wasm32-unknown-unknown/release/isometric_engine.wasm public/isometric_engine.wasm
