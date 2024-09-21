@@ -19,11 +19,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
           target: wasm32-unknown-unknown
-    - name: Install Server
-      uses: baptiste0928/cargo-install@v3
-      with:
-        crate: basic-http-server
-    - name: build
+    - name: Build Game
       run: cargo build --release --target wasm32-unknown-unknown  
     - name: Deploy to GitHub Pages
       uses: crazy-max/ghaction-github-pages@v4
@@ -33,5 +29,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GITHUB_TOKEN: ${{ secrets.API_TOKEN_GITHUB_DEMO }}
-    - name: serve
-      run: basic-http-server .
+    - name: Check Out
+      run: cat ./target/wasm32-unknown-unknown/release/isometric_engine.wasm
+
