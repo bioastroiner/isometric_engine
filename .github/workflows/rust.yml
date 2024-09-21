@@ -26,9 +26,8 @@ jobs:
       with:
         target_branch: gh-pages
         build_dir: .
+        verbose: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GITHUB_TOKEN: ${{ secrets.API_TOKEN_GITHUB_DEMO }}
-    - name: Check Out
-      run: cat ./target/wasm32-unknown-unknown/release/isometric_engine.wasm
 
