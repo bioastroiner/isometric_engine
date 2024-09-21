@@ -15,6 +15,7 @@ uniform lowp vec2 player_gl_pos; // player position on screen (its located on th
 uniform lowp float player_dist; // todo: remove
 uniform lowp vec3 player_world_pos; // player position in the world (x,y,z)
 uniform lowp vec3 block_world_pos; // position in the world (x,y,z) of the entire block being rendered
+uniform int player_hidble;
 
 // compares two tiles to determain which one appears on top
 // if positive $lhs is on top of $rhs
@@ -31,6 +32,9 @@ int cmp_tile(vec3 lhs_in, vec3 rhs_in) {
 
 // https://computergraphics.stackexchange.com/questions/5724/glsl-can-someone-explain-why-gl-fragcoord-xy-screensize-is-performed-and-for
 float player_glass() {
+    if (player_hidble == 1) {
+       return 1.0;
+    }
     lowp float a = 1.0;
     lowp float r = 40.0;
     lowp float d = 0.0;

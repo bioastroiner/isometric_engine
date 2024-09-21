@@ -41,6 +41,7 @@ struct Game {
     debug: bool,
     draw_queue: Vec<Rc<RefCell<dyn Renderble>>>,
     block_material: Material,
+    blocks_cover_player: bool,
     // buffer_queue: Vec<Rc<RefCell<dyn ISOGraphics>>>, // todo: a buffer for holding old data in draw queue to be moved out or into draw queue on player discovery of new visible chunk
 }
 impl Game {
@@ -175,6 +176,7 @@ async fn main() {
     let _quad_gl = unsafe { get_internal_gl().quad_gl };
     let _quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
+	blocks_cover_player: false,
         block_textures: load_tiles_assets().await,
         player_object: Rc::new(RefCell::new(objects::Player::new(
             vec3(0., 0., 1.),
@@ -199,6 +201,7 @@ async fn main() {
                     ("player_dist".to_string(), UniformType::Float1),
                     ("player_world_pos".to_string(), UniformType::Float3),
                     ("block_world_pos".to_string(), UniformType::Float3),
+		    ("player_hidble".to_string(), UniformType::Int1)
                 ],
                 pipeline_params: PipelineParams {
                     depth_write: true,
@@ -400,6 +403,16 @@ async fn main() {
                 None,
                 format!("Render Queue: {}", game.draw_queue.len()).as_str(),
             );
+	    if ui.button(None, "Player can be hidden by blocks mode") {
+		let x = 
+		    if game.blocks_cover_player {
+			1
+		    } else {
+			0
+		    };
+		game.blocks_cover_player = !game.blocks_cover_player;
+		game.block_material.set_uniform("player_hidble",x);
+	    }
         });
         if is_mouse_button_down(MouseButton::Right) {
             root_ui().window(hash!(), mouse_position().into(), vec2(100., 200.), |ui| {
