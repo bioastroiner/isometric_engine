@@ -371,6 +371,7 @@ async fn main() {
 	    while game.world.get_block(t.0,t.1,t.2) != 0 {
 		t.2 = t.2 + 1;
 	    }
+	    if player_pos.distance(vec3(t.0 as f32,t.1 as f32,t.2 as f32)) > 1.0 {
 	    game.world.set_block(t.0,t.1,t.2, game.selected_id as u8);
 	    // reload the draw queue to get all the new blocks
 	    game.draw_queue.clear();
@@ -378,6 +379,7 @@ async fn main() {
 	    for ele in game.world.blocks() {
 		game.draw_queue
 		    .push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
+	    }
 	    }
 	}
         game.player_mut().update_orientation(a);
