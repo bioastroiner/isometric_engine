@@ -22,10 +22,16 @@ impl World {
         self.tile_storage[z][y][x]
     }
     pub fn get_block_f(&self, pos: Vec3) -> u8 {
-        assert!(
-            pos.x.is_sign_positive() && pos.y.is_sign_positive() && pos.z.is_sign_positive(),
-            "Please Provide a Positive integer"
-        );
+	let mut pos = pos;
+	if pos.x.is_sign_negative() {
+	    pos.x = - pos.x;
+	}
+	if pos.y.is_sign_negative() {
+	    pos.y = - pos.y;
+	}
+	if pos.z.is_sign_negative() {
+	    pos.z = - pos.z;
+	}
         self.tile_storage[pos.z.floor() as usize][pos.y.floor() as usize][pos.x.floor() as usize]
     }
     pub fn blocks(&self) -> Vec<(Vec3, u8)> {

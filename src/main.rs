@@ -150,22 +150,22 @@ fn generate_world(world: &mut World) {
             //ground
             world.set_block(i, j, 0, 3);
             // hill
-            if (5..=8).contains(&i) && (3..=6).contains(&j) {
-                world.set_block(i, j, 2, 3);
-                world.set_block(i, j, 4, 3);
-            }
-            if i > 0 && i < 3 && j > 0 && j < 3 {
-                world.set_block(i, j, 4, 3);
-	    }
+            // if (5..=8).contains(&i) && (3..=6).contains(&j) {
+                // world.set_block(i, j, 2, 3);
+                // world.set_block(i, j, 4, 3);
+            // }
+            // if i > 0 && i < 3 && j > 0 && j < 3 {
+                // world.set_block(i, j, 4, 3);
+	    // }
 	}
         
     }
-    world.set_block(10, 10, 1, 6);
-    world.set_block(11, 10, 1, 6);
-    world.set_block(12, 10, 1, 6);
-    world.set_block(10, 10, 3 + 2, 6);
-    world.set_block(11, 10, 3 + 2, 6);
-    world.set_block(12, 10, 3 + 2, 6);
+    // world.set_block(10, 10, 1, 6);
+    // world.set_block(11, 10, 1, 6);
+    // world.set_block(12, 10, 1, 6);
+    // world.set_block(10, 10, 3 + 2, 6);
+    // world.set_block(11, 10, 3 + 2, 6);
+    // world.set_block(12, 10, 3 + 2, 6);
 }
 #[macroquad::main("Isometric Engine")]
 async fn main() {
@@ -304,6 +304,7 @@ async fn main() {
                 game.player_object.borrow_mut().set_vel(direction * 2.);
                 // player.pos += direction * player_speed * get_frame_time();
             }
+
         } else {
             let z = game.player_object.as_ref().borrow().vel().z;
             game.player_object.borrow_mut().set_vel(vec3(0., 0., z));
@@ -311,6 +312,11 @@ async fn main() {
         // update physics
         let vel = game.player_object.as_ref().borrow().vel();
         let pos = game.player_object.as_ref().borrow().pos();
+	if game.world.get_block_f((pos + vel * get_frame_time()).with_z(pos.z).floor()+ vec3(1.0,1.0,0.0)) != 0 {
+            let z = game.player_object.as_ref().borrow().vel().z;
+            game.player_object.borrow_mut().set_vel(vec3(0., 0., z));
+	}
+        let vel = game.player_object.as_ref().borrow().vel();
         game.player_mut().set_pos(pos + vel * get_frame_time());
         for el in game.draw_queue.iter() {
             let renderable = el.as_ref().borrow();
