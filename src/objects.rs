@@ -103,6 +103,12 @@ impl Renderble for Block {
         let player_pos_i = flatten_iso(player_pos);
         let p = flatten_iso(self.pos);
         let dist_to_player = (player_pos_i - p).length().abs();
+	let h = if player_pos_i.x < self.pos.x - 0.5 && player_pos_i.y < self.pos.y - 0.5 {
+	    0
+	} else {
+	    1
+	};
+	game_state.block_material.set_uniform("block_behind_player",h);
         game_state
             .block_material
             .set_uniform("player_dist", dist_to_player);

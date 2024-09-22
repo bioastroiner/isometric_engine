@@ -42,6 +42,7 @@ pub(crate) struct Game {
     draw_queue: Vec<Rc<RefCell<dyn Renderble>>>,
     block_material: Material,
     blocks_cover_player: bool,
+    selected_id: u32
     // buffer_queue: Vec<Rc<RefCell<dyn ISOGraphics>>>, // todo: a buffer for holding old data in draw queue to be moved out or into draw queue on player discovery of new visible chunk
 }
 impl Game {
@@ -152,7 +153,7 @@ fn generate_world(world: &mut World) {
             }
             if i > 0 && i < 3 && j > 0 && j < 3 {
                 world.set_block(i, j, 4, 3);
-            }
+	    }
 	}
         
     }
@@ -168,6 +169,7 @@ async fn main() {
     let _quad_gl = unsafe { get_internal_gl().quad_gl };
     let _quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
+	selected_id: 0,
 	blocks_cover_player: false,
         block_textures: load_tiles_assets().await,
         player_object: Rc::new(RefCell::new(objects::Player::new(
@@ -193,7 +195,8 @@ async fn main() {
                     ("player_dist".to_string(), UniformType::Float1),
                     ("player_world_pos".to_string(), UniformType::Float3),
                     ("block_world_pos".to_string(), UniformType::Float3),
-		    ("player_hidble".to_string(), UniformType::Int1)
+		    ("player_hidble".to_string(), UniformType::Int1),
+		    ("block_behind_player".to_string(), UniformType::Int1),
                 ],
                 pipeline_params: PipelineParams {
                     depth_write: true,
@@ -349,6 +352,21 @@ async fn main() {
             a += 360.;
         }
         let tile_under_mouse = csw_in_isometric.floor();
+	// place block on the mouse click
+	if is_mouse_button_pressed(MouseButton::Left) {
+	    let mut t = (tile_under_mouse.x as usize + 1,tile_under_mouse.y as usize + 1,1);
+	    while game.world.get_block(t.0,t.1,t.2) != 0 {
+		t.2 = t.2 + 1;
+	    }
+	    game.world.set_block(t.0,t.1,t.2, game.selected_id as u8);
+	    // reload the draw queue to get all the new blocks
+	    game.draw_queue.clear();
+	    game.draw_queue.push(game.player_object.clone());
+	    for ele in game.world.blocks() {
+		game.draw_queue
+		    .push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
+	    }
+	}
         game.player_mut().update_orientation(a);
         if game.debug {
             draw_line(v.x, v.y, m.x, m.y, 2., GREEN);
@@ -395,7 +413,7 @@ async fn main() {
                 None,
                 format!("Render Queue: {}", game.draw_queue.len()).as_str(),
             );
-	    if ui.button(None, "Player can be hidden by blocks mode") {
+	    if ui.button(None, "Toggle Player Fog") {
 		let x = 
 		    if game.blocks_cover_player {
 			1
@@ -404,6 +422,16 @@ async fn main() {
 		    };
 		game.blocks_cover_player = !game.blocks_cover_player;
 		game.block_material.set_uniform("player_hidble",x);
+	    }
+	    ui.button(None, format!("Current BlockID: {}",game.selected_id).as_str());
+	    ui.texture(game.block_textures[game.selected_id as usize].clone(),32.0,32.0);
+	    if ui.button(None, "Next Block ID") {
+		if game.selected_id < (game.block_textures.len() - 1) as u32 {
+		    game.selected_id += 1;
+		}
+		else { 
+		    game.selected_id = 0;
+		}
 	    }
         });
         if is_mouse_button_down(MouseButton::Right) {
