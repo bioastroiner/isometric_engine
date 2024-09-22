@@ -34,6 +34,7 @@ pub(crate) enum PlayerOrient {
     _315 = 315,
 }
 pub(crate) struct Game {
+    block_trans_map: Vec<u32>,
     block_textures: Vec<Texture2D>,
     player_textures: HashMap<PlayerOrient, Texture2D>,
     player_object: Rc<RefCell<Player>>,
@@ -42,7 +43,9 @@ pub(crate) struct Game {
     draw_queue: Vec<Rc<RefCell<dyn Renderble>>>,
     block_material: Material,
     blocks_cover_player: bool,
-    selected_id: u32
+    selected_id: u32,
+    shade_top: Texture2D,
+    shade_bot: Texture2D,
     // buffer_queue: Vec<Rc<RefCell<dyn ISOGraphics>>>, // todo: a buffer for holding old data in draw queue to be moved out or into draw queue on player discovery of new visible chunk
 }
 impl Game {
@@ -169,6 +172,9 @@ async fn main() {
     let _quad_gl = unsafe { get_internal_gl().quad_gl };
     let _quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
+	block_trans_map: vec![0,1,2],
+	shade_top : Texture2D::from_file_with_format(include_bytes!("../shade_top.png"),Some(ImageFormat::Png)),
+	shade_bot : Texture2D::from_file_with_format(include_bytes!("../shade_bot.png"),Some(ImageFormat::Png)),
 	selected_id: 1,
 	blocks_cover_player: false,
         block_textures: load_tiles_assets().await,
@@ -355,7 +361,7 @@ async fn main() {
         let tile_under_mouse = csw_in_isometric.floor();
 	// place block on the mouse click
 	if is_mouse_button_pressed(MouseButton::Left) {
-	    let mut t = (tile_under_mouse.x as usize + 1,tile_under_mouse.y as usize + 1,1);
+	    let mut t = (tile_under_mouse.x as usize + 1,tile_under_mouse.y as usize + 2,player_pos.z as usize);
 	    while game.world.get_block(t.0,t.1,t.2) != 0 {
 		t.2 = t.2 + 1;
 	    }
@@ -444,6 +450,20 @@ async fn main() {
                 }
             });
         }
+
+	let z = match get_last_key_pressed() {
+	    Some(macroquad::input::KeyCode::Key1) => Some(1),
+	    Some(macroquad::input::KeyCode::Key2) => Some(2),
+	    Some(macroquad::input::KeyCode::Key3) => Some(3),
+	    Some(macroquad::input::KeyCode::Key4) => Some(4),
+	    Some(macroquad::input::KeyCode::Key5) => Some(5),
+	    Some(macroquad::input::KeyCode::Key6) => Some(6),
+	    Some(macroquad::input::KeyCode::Key7) => Some(7),
+	    _ => None
+	};
+	if z.is_some() {
+	   game.selected_id = z.unwrap();
+	}
         next_frame().await;
     }
 }

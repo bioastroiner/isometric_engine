@@ -103,13 +103,14 @@ impl Renderble for Block {
         let player_pos_i = flatten_iso(player_pos);
         let p = flatten_iso(self.pos);
         let dist_to_player = (player_pos_i - p).length().abs();
-	let h = if player_pos_i.x < self.pos.x - 0.5 && player_pos_i.y < self.pos.y - 0.5 {
+	let h = if player_pos_i.x < self.pos.x - 0.8 && player_pos_i.y < self.pos.y - 0.8 {
 	    0
 	} else {
 	    1
 	};
+	let top = game_state.world.get_block_f(self.pos + vec3(0.0,0.0,1.0));
 	game_state.block_material.set_uniform("block_behind_player",h);
-	game_state.block_material.set_uniform("block_over_top",game_state.world.get_block_f(self.pos + vec3(0.0,0.0,1.0)));
+	game_state.block_material.set_uniform("block_over_top",top);
         game_state
             .block_material
             .set_uniform("player_dist", dist_to_player);
@@ -127,6 +128,19 @@ impl Renderble for Block {
                 ..Default::default()
             },
         );
+	// draw the shade if it's right under a block and is visible (like when player is seeing trough)
+	if top != 0 && (dist_to_player < 5.0 && !game_state.block_trans_map.contains(&(top as u32))) {
+	 draw_tile_ex(
+            p.x,
+            p.y,
+            TILE_SIZE,
+            &game_state.shade_top,
+            DrawTilesParams {
+                color: c,
+                ..Default::default()
+            },
+        );   
+	}
         gl_use_default_material();
     }
 }
