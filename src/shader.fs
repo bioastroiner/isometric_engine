@@ -17,6 +17,7 @@ uniform lowp vec3 player_world_pos; // player position in the world (x,y,z)
 uniform lowp vec3 block_world_pos; // position in the world (x,y,z) of the entire block being rendered
 uniform int player_hidble;
 uniform int block_behind_player; // whether if block is behind the player
+uniform int block_over_top; // id not bool
 
 // compares two tiles to determain which one appears on top
 // if positive $lhs is on top of $rhs
@@ -50,9 +51,12 @@ float player_glass() {
     // if (d > r / 2.0) {
     // b = cmp_tile(block_world_pos - vec3(uv.x, -uv.y, 0.0), player_world_pos) > 0;
     // }
-    if (
         // only cut if the block is being render over the player
-        block_world_pos.z >= player_world_pos.z &&
+    b = block_world_pos.z >= player_world_pos.z;
+    if (block_over_top == 0) {
+    b = block_world_pos.z > player_world_pos.z;
+      }
+    if (
             // cmp_tile(block_world_pos, player_world_pos) > 0 &&
             b &&
             d < r

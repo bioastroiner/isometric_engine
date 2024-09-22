@@ -197,6 +197,7 @@ async fn main() {
                     ("block_world_pos".to_string(), UniformType::Float3),
 		    ("player_hidble".to_string(), UniformType::Int1),
 		    ("block_behind_player".to_string(), UniformType::Int1),
+		    ("block_over_top".to_string(), UniformType::Int1),
                 ],
                 pipeline_params: PipelineParams {
                     depth_write: true,

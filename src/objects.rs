@@ -1,6 +1,6 @@
 use macroquad::{
     color::WHITE,
-    math::{Rect, Vec3},
+    math::{Rect, Vec3, vec3},
     prelude::{gl_use_default_material, gl_use_material},
 };
 
@@ -109,6 +109,7 @@ impl Renderble for Block {
 	    1
 	};
 	game_state.block_material.set_uniform("block_behind_player",h);
+	game_state.block_material.set_uniform("block_over_top",game_state.world.get_block_f(self.pos + vec3(0.0,0.0,1.0)));
         game_state
             .block_material
             .set_uniform("player_dist", dist_to_player);
