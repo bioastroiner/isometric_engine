@@ -169,7 +169,7 @@ async fn main() {
     let _quad_gl = unsafe { get_internal_gl().quad_gl };
     let _quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
-	selected_id: 0,
+	selected_id: 1,
 	blocks_cover_player: false,
         block_textures: load_tiles_assets().await,
         player_object: Rc::new(RefCell::new(objects::Player::new(
