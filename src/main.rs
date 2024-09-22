@@ -430,7 +430,7 @@ async fn main() {
 		    game.selected_id += 1;
 		}
 		else { 
-		    game.selected_id = 0;
+		    game.selected_id = 1;
 		}
 	    }
         });
