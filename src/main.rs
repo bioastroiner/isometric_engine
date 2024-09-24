@@ -405,6 +405,7 @@ async fn main() {
             );
         }
         root_ui().group(hash!(), vec2(200., 400.), |ui| {
+	    ui.button(None, format!("V:{}\n B:{}",VERSION.unwrap(),BUILD_TIME.unwrap_or("NAN")).as_str());
             game.debug = if ui.button(None, format!("Debug Mode: {}", game.debug).as_str()) {
                 !game.debug
             } else {

@@ -23,6 +23,8 @@ jobs:
           target: wasm32-unknown-unknown
     - name: Build Game
       run: cargo build --release --target wasm32-unknown-unknown
+      env:
+        SOURCE_DATE_EPOCH: $(date +%Y-%m-%d%d)
     - name: Pre Deployment
       run: |
         mkdir public
@@ -62,5 +64,3 @@ jobs:
         verbose: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # GITHUB_TOKEN: ${{ secrets.API_TOKEN_GITHUB_DEMO }}
-
