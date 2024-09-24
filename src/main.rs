@@ -167,6 +167,8 @@ fn generate_world(world: &mut World) {
     // world.set_block(11, 10, 3 + 2, 6);
     // world.set_block(12, 10, 3 + 2, 6);
 }
+const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+const BUILD_TIME: Option<&str> = option_env!("SOURCE_DATE_EPOCH");
 #[macroquad::main("Isometric Engine")]
 async fn main() {
     let _quad_gl = unsafe { get_internal_gl().quad_gl };
