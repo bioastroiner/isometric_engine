@@ -21,14 +21,19 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
           target: wasm32-unknown-unknown
-    - name: Build Game
+    - name: Build Game (Optimized)
       run: cargo build --release --target wasm32-unknown-unknown
       env:
         SOURCE_DATE_EPOCH: $(date +%Y-%m-%d%d)
+    - name: Build Game (Debug)
+      run: cargo build --target wasm32-unknown-unknown
+      env:
+        SOURCE_DATE_EPOCH: date +%Y-%m-%d%d
     - name: Pre Deployment
       run: |
         mkdir public
-        cp ./target/wasm32-unknown-unknown/release/isometric_engine.wasm public/isometric_engine.wasm
+        cp ./target/wasm32-unknown-unknown/release/isometric_engine.wasm public/release.wasm
+        cp ./target/wasm32-unknown-unknown/debug/isometric_engine.wasm public/debug.wasm
         cat > public/index.html <<EOL
         <html lang="en">
         <head>
@@ -52,7 +57,38 @@ jobs:
         <body>
         <canvas id="glcanvas" tabindex='1'></canvas>
         <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
-        <script>load("./isometric_engine.wasm");</script>
+        <script>load("./release.wasm");</script>
+        <a href="./debug.html">Debug</a>
+        <a href="./index.html">Release (this)</a>
+        </body>
+        </html>
+        EOL
+        cat > public/debug.html <<EOL
+        <html lang="en">
+        <head>
+        <meta charset="utf-8">
+        <title>Debug Build</title>
+        <style>
+        html,
+        body,
+        canvas {
+            margin: 10px;
+            padding: 10px;
+            width: 80%;
+            height: 90%;
+            overflow: hidden;
+            position: relative;
+            background: black;
+            z-index: 0;
+        }
+        </style>
+        </head>
+        <body>
+        <canvas id="glcanvas" tabindex='1'></canvas>
+        <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
+        <script>load("./debug.wasm");</script>
+        <a href="./debug.html">Debug (this)</a>
+        <a href="./index.html">Release</a>
         </body>
         </html>
         EOL
