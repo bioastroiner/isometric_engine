@@ -6,13 +6,13 @@ const AREA: usize = WIDTH * WIDTH;
 const VOL: usize = AREA * HEIGHT;
 /// world only stores tiles as they can be only one tile per block
 pub struct World {
-    tile_storage: [[[u8; WIDTH]; WIDTH]; HEIGHT],
+    tile_storage: Vec<Vec<Vec<u8>>>,
     // entity_storage
 }
 impl World {
     pub fn new() -> Self {
         Self {
-            tile_storage: [[[0; WIDTH]; WIDTH]; HEIGHT],
+            tile_storage: vec![vec![vec![0; WIDTH]; WIDTH]; HEIGHT],
         }
     }
     pub fn set_block(&mut self, x: usize, y: usize, z: usize, b: u8) {
