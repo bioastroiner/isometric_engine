@@ -7,7 +7,14 @@ use objects::*;
 use render::*;
 use world::World;
 
-use macroquad::{material, prelude::*, ui::*};
+use macroquad::{
+    material,
+    prelude::*,
+    ui::{
+        widgets::{Button, Group, Window},
+        *,
+    },
+};
 use std::{
     cell::{Ref, RefCell, RefMut},
     cmp::Ordering,
@@ -46,6 +53,9 @@ pub(crate) struct Game {
     selected_id: u32,
     shade_top: Texture2D,
     shade_bot: Texture2D,
+    selection_top: Texture2D,
+    ui_selection_mode: bool,
+    ui_selection_pos: Vec2,
     // buffer_queue: Vec<Rc<RefCell<dyn ISOGraphics>>>, // todo: a buffer for holding old data in draw queue to be moved out or into draw queue on player discovery of new visible chunk
 }
 impl Game {
@@ -219,6 +229,11 @@ async fn main() {
     let _quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
         block_trans_map: vec![0, 1, 2],
+        selection_top: Texture2D::from_file_with_format(
+            include_bytes!("../selection_top.png"),
+            Some(ImageFormat::Png),
+        ),
+
         shade_top: Texture2D::from_file_with_format(
             include_bytes!("../shade_top.png"),
             Some(ImageFormat::Png),
@@ -276,6 +291,8 @@ async fn main() {
             },
         )
         .unwrap(),
+        ui_selection_mode: false,
+        ui_selection_pos: Vec2::ZERO,
     };
     build_textures_atlas();
     generate_world(&mut game.world);
@@ -314,9 +331,23 @@ async fn main() {
         });
 
         set_camera(&camera);
-        if mouse_wheel().1.abs() > 0. {
+        if mouse_wheel().1.abs() > 0. && !is_key_down(miniquad::KeyCode::LeftShift) {
             camera.zoom += mouse_wheel().1 * get_frame_time() * 0.0001;
             camera.zoom = camera.zoom.clamp(lower_limit, upper_limit);
+        } else if mouse_wheel().1.abs() > 0. && is_key_down(miniquad::KeyCode::LeftShift) {
+            if mouse_wheel().1.is_sign_positive() {
+                if game.selected_id < (game.block_textures.len() - 1) as u32 {
+                    game.selected_id += 1;
+                } else {
+                    game.selected_id = 1;
+                }
+            } else {
+                if game.selected_id > 1 as u32 {
+                    game.selected_id -= 1;
+                } else {
+                    game.selected_id = (game.block_textures.len() - 1) as u32;
+                }
+            }
         }
         game.block_material.set_uniform("camera_zoom", camera.zoom);
 
@@ -378,8 +409,6 @@ async fn main() {
             renderable.render(&game);
         }
         curser_pos_iso = vec2(csw_in_isometric.x.floor(), csw_in_isometric.y.ceil());
-        // cursor
-        // draw_tile(curser_pos_iso.x, curser_pos_iso.y, tile_size, &tiles[1]);
         let h_pos = vec2(curser_pos_iso.x, curser_pos_iso.y);
         if game.debug {
             draw_hexagon(
@@ -397,7 +426,28 @@ async fn main() {
                 Color::new(0., 0., 0., 0.),
             );
         }
-
+        // selection block
+        {
+            let tile_under_mouse = csw_in_isometric.floor();
+            let mut t = (
+                tile_under_mouse.x as usize + 1,
+                tile_under_mouse.y as usize + 2,
+                player_pos.z as usize,
+            );
+            let mut offset = 0;
+            while game.world.get_block(t.0, t.1, t.2) != 0 {
+                t.2 = t.2 + 1;
+                offset += 1;
+            }
+            if player_pos.distance(vec3(t.0 as f32, t.1 as f32, t.2 as f32)) > 1.0 {
+                draw_tile(
+                    curser_pos_iso.x + 1. - offset as f32,
+                    curser_pos_iso.y + 1. - offset as f32,
+                    TILE_SIZE,
+                    &game.selection_top,
+                );
+            }
+        }
         push_camera_state();
         set_default_camera();
         let v = in_2d(player_pos);
@@ -421,7 +471,10 @@ async fn main() {
         }
         let tile_under_mouse = csw_in_isometric.floor();
         // place block on the mouse click
-        if is_mouse_button_pressed(MouseButton::Left) {
+        if is_mouse_button_pressed(MouseButton::Left)
+            || (is_mouse_button_down(MouseButton::Left) && is_key_down(miniquad::KeyCode::LeftControl))
+            && /*works partialy*/ !root_ui().is_mouse_over(vec2(mouse_position().0,mouse_position().1))
+        {
             let mut t = (
                 tile_under_mouse.x as usize + 1,
                 tile_under_mouse.y as usize + 2,
@@ -505,29 +558,32 @@ async fn main() {
                 32.0,
                 32.0,
             );
-            if ui.button(None, "Next Block ID") {
-                if game.selected_id < (game.block_textures.len() - 1) as u32 {
-                    game.selected_id += 1;
-                } else {
-                    game.selected_id = 1;
-                }
-            }
         });
-        if is_mouse_button_down(MouseButton::Right) {
-            //     root_ui().window(hash!(), mouse_position().into(), vec2(100., 200.), |ui| {
-            //         ui.button(None, "Select Block:");
-            //         for (id, t) in game.block_textures.iter().enumerate() {
-            //             ui.button(None, format!("BlockID: {}", id));
-            //             ui.canvas().image(Rect::new(0., 0., 32., 32.), t);
-            //         }
-            //     });
-            if game.selected_id < (game.block_textures.len() - 1) as u32 {
-                game.selected_id += 1;
+        if is_mouse_button_pressed(MouseButton::Right) {
+            game.ui_selection_mode = !game.ui_selection_mode;
+            if game.ui_selection_mode {
+                game.ui_selection_pos = mouse_position().into();
             } else {
-                game.selected_id = 1;
             }
         }
-
+        if game.ui_selection_mode {
+            root_ui().button(game.ui_selection_pos, "Select Block:");
+            for (id, t) in game.block_textures.iter().enumerate() {
+                if id == 0 {
+                    continue;
+                }
+                let s = 32.;
+                root_ui().canvas().image(
+                    Rect::new(
+                        game.ui_selection_pos.x,
+                        game.ui_selection_pos.y + (s + 2.0) * id as f32,
+                        s,
+                        s,
+                    ),
+                    t,
+                );
+            }
+        }
         let z = match get_last_key_pressed() {
             Some(macroquad::input::KeyCode::Key1) => Some(1),
             Some(macroquad::input::KeyCode::Key2) => Some(2),
