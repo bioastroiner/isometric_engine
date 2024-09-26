@@ -7,13 +7,13 @@ use objects::*;
 use render::*;
 use world::World;
 
+use macroquad::{material, prelude::*, ui::*};
 use std::{
     cell::{Ref, RefCell, RefMut},
     cmp::Ordering,
     collections::HashMap,
     rc::Rc,
 };
-use macroquad::{material, prelude::*, ui::*};
 
 mod objects;
 mod world;
@@ -94,35 +94,59 @@ fn load_player_assets() -> HashMap<PlayerOrient, Texture2D> {
     let mut _player_textures = HashMap::new();
     _player_textures.insert(
         PlayerOrient::_225,
-        Texture2D::from_file_with_format(include_bytes!("../resources/player/225.png"),Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../resources/player/225.png"),
+            Some(ImageFormat::Png),
+        ),
     );
     _player_textures.insert(
         PlayerOrient::_315,
-        Texture2D::from_file_with_format(include_bytes!("../resources/player/315.png"),Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../resources/player/315.png"),
+            Some(ImageFormat::Png),
+        ),
     );
     _player_textures.insert(
         PlayerOrient::_45,
-        Texture2D::from_file_with_format(include_bytes!("../resources/player/45.png"),Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../resources/player/45.png"),
+            Some(ImageFormat::Png),
+        ),
     );
     _player_textures.insert(
         PlayerOrient::_135,
-        Texture2D::from_file_with_format(include_bytes!("../resources/player/135.png"),Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../resources/player/135.png"),
+            Some(ImageFormat::Png),
+        ),
     );
     _player_textures.insert(
         PlayerOrient::_270,
-        Texture2D::from_file_with_format(include_bytes!("../resources/player/270.png"),Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../resources/player/270.png"),
+            Some(ImageFormat::Png),
+        ),
     );
     _player_textures.insert(
         PlayerOrient::_90,
-        Texture2D::from_file_with_format(include_bytes!("../resources/player/90.png"),Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../resources/player/90.png"),
+            Some(ImageFormat::Png),
+        ),
     );
     _player_textures.insert(
         PlayerOrient::_180,
-        Texture2D::from_file_with_format(include_bytes!("../resources/player/180.png"),Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../resources/player/180.png"),
+            Some(ImageFormat::Png),
+        ),
     );
     _player_textures.insert(
         PlayerOrient::_0,
-        Texture2D::from_file_with_format(include_bytes!("../resources/player/0.png"),Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../resources/player/0.png"),
+            Some(ImageFormat::Png),
+        ),
     );
     _player_textures
         .iter_mut()
@@ -131,13 +155,34 @@ fn load_player_assets() -> HashMap<PlayerOrient, Texture2D> {
 }
 async fn load_tiles_assets() -> Vec<Texture2D> {
     let mut tiles: Vec<Texture2D> = Vec::new();
-    tiles.push(Texture2D::from_file_with_format(include_bytes!("../empty.png"),Some(ImageFormat::Png)));
-    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_select.png"),Some(ImageFormat::Png)));
-    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_frame.png"),Some(ImageFormat::Png)));
-    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_grass.png"),Some(ImageFormat::Png)));
-    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_stone.png"),Some(ImageFormat::Png)));
-    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile.png"),Some(ImageFormat::Png)));
-    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_machine.png"),Some(ImageFormat::Png)));
+    tiles.push(Texture2D::from_file_with_format(
+        include_bytes!("../empty.png"),
+        Some(ImageFormat::Png),
+    ));
+    tiles.push(Texture2D::from_file_with_format(
+        include_bytes!("../tile_select.png"),
+        Some(ImageFormat::Png),
+    ));
+    tiles.push(Texture2D::from_file_with_format(
+        include_bytes!("../tile_frame.png"),
+        Some(ImageFormat::Png),
+    ));
+    tiles.push(Texture2D::from_file_with_format(
+        include_bytes!("../tile_grass.png"),
+        Some(ImageFormat::Png),
+    ));
+    tiles.push(Texture2D::from_file_with_format(
+        include_bytes!("../tile_stone.png"),
+        Some(ImageFormat::Png),
+    ));
+    tiles.push(Texture2D::from_file_with_format(
+        include_bytes!("../tile.png"),
+        Some(ImageFormat::Png),
+    ));
+    tiles.push(Texture2D::from_file_with_format(
+        include_bytes!("../tile_machine.png"),
+        Some(ImageFormat::Png),
+    ));
     // tles.push(load_texture("tile_machine.png").await.unwrap());
     for tile in &tiles {
         tile.set_filter(FilterMode::Nearest);
@@ -151,14 +196,13 @@ fn generate_world(world: &mut World) {
             world.set_block(i, j, 0, 3);
             // hill
             // if (5..=8).contains(&i) && (3..=6).contains(&j) {
-                // world.set_block(i, j, 2, 3);
-                // world.set_block(i, j, 4, 3);
+            // world.set_block(i, j, 2, 3);
+            // world.set_block(i, j, 4, 3);
             // }
             // if i > 0 && i < 3 && j > 0 && j < 3 {
-                // world.set_block(i, j, 4, 3);
-	    // }
-	}
-        
+            // world.set_block(i, j, 4, 3);
+            // }
+        }
     }
     // world.set_block(10, 10, 1, 6);
     // world.set_block(11, 10, 1, 6);
@@ -174,11 +218,17 @@ async fn main() {
     let _quad_gl = unsafe { get_internal_gl().quad_gl };
     let _quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
-	block_trans_map: vec![0,1,2],
-	shade_top : Texture2D::from_file_with_format(include_bytes!("../shade_top.png"),Some(ImageFormat::Png)),
-	shade_bot : Texture2D::from_file_with_format(include_bytes!("../shade_bot.png"),Some(ImageFormat::Png)),
-	selected_id: 1,
-	blocks_cover_player: false,
+        block_trans_map: vec![0, 1, 2],
+        shade_top: Texture2D::from_file_with_format(
+            include_bytes!("../shade_top.png"),
+            Some(ImageFormat::Png),
+        ),
+        shade_bot: Texture2D::from_file_with_format(
+            include_bytes!("../shade_bot.png"),
+            Some(ImageFormat::Png),
+        ),
+        selected_id: 3,
+        blocks_cover_player: false,
         block_textures: load_tiles_assets().await,
         player_object: Rc::new(RefCell::new(objects::Player::new(
             vec3(0., 0., 1.),
@@ -186,7 +236,7 @@ async fn main() {
         ))),
         world: world::World::new(),
         player_textures: load_player_assets(),
-        debug: if cfg!(debug_assertions) {true} else {false}, 
+        debug: if cfg!(debug_assertions) { true } else { false },
         draw_queue: Vec::with_capacity(1000),
         block_material: material::load_material(
             ShaderSource::Glsl {
@@ -203,9 +253,9 @@ async fn main() {
                     ("player_dist".to_string(), UniformType::Float1),
                     ("player_world_pos".to_string(), UniformType::Float3),
                     ("block_world_pos".to_string(), UniformType::Float3),
-		    ("player_hidble".to_string(), UniformType::Int1),
-		    ("block_behind_player".to_string(), UniformType::Int1),
-		    ("block_over_top".to_string(), UniformType::Int1),
+                    ("player_hidble".to_string(), UniformType::Int1),
+                    ("block_behind_player".to_string(), UniformType::Int1),
+                    ("block_over_top".to_string(), UniformType::Int1),
                 ],
                 pipeline_params: PipelineParams {
                     depth_write: true,
@@ -225,7 +275,7 @@ async fn main() {
                 ..Default::default()
             },
         )
-            .unwrap(),
+        .unwrap(),
     };
     build_textures_atlas();
     generate_world(&mut game.world);
@@ -306,7 +356,6 @@ async fn main() {
                 game.player_object.borrow_mut().set_vel(direction * 2.);
                 // player.pos += direction * player_speed * get_frame_time();
             }
-
         } else {
             let z = game.player_object.as_ref().borrow().vel().z;
             game.player_object.borrow_mut().set_vel(vec3(0., 0., z));
@@ -314,10 +363,14 @@ async fn main() {
         // update physics
         let vel = game.player_object.as_ref().borrow().vel();
         let pos = game.player_object.as_ref().borrow().pos();
-	if game.world.get_block_f((pos + vel * get_frame_time()).with_z(pos.z).floor()+ vec3(1.0,1.0,0.0)) != 0 {
+        if game
+            .world
+            .get_block_f((pos + vel * get_frame_time()).with_z(pos.z).floor() + vec3(1.0, 1.0, 0.0))
+            != 0
+        {
             let z = game.player_object.as_ref().borrow().vel().z;
             game.player_object.borrow_mut().set_vel(vec3(0., 0., z));
-	}
+        }
         let vel = game.player_object.as_ref().borrow().vel();
         game.player_mut().set_pos(pos + vel * get_frame_time());
         for el in game.draw_queue.iter() {
@@ -367,23 +420,27 @@ async fn main() {
             a += 360.;
         }
         let tile_under_mouse = csw_in_isometric.floor();
-	// place block on the mouse click
-	if is_mouse_button_pressed(MouseButton::Left) {
-	    let mut t = (tile_under_mouse.x as usize + 1,tile_under_mouse.y as usize + 2,player_pos.z as usize);
-	    while game.world.get_block(t.0,t.1,t.2) != 0 {
-		t.2 = t.2 + 1;
-	    }
-	    if player_pos.distance(vec3(t.0 as f32,t.1 as f32,t.2 as f32)) > 1.0 {
-	    game.world.set_block(t.0,t.1,t.2, game.selected_id as u8);
-	    // reload the draw queue to get all the new blocks
-	    game.draw_queue.clear();
-	    game.draw_queue.push(game.player_object.clone());
-	    for ele in game.world.blocks() {
-		game.draw_queue
-		    .push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
-	    }
-	    }
-	}
+        // place block on the mouse click
+        if is_mouse_button_pressed(MouseButton::Left) {
+            let mut t = (
+                tile_under_mouse.x as usize + 1,
+                tile_under_mouse.y as usize + 2,
+                player_pos.z as usize,
+            );
+            while game.world.get_block(t.0, t.1, t.2) != 0 {
+                t.2 = t.2 + 1;
+            }
+            if player_pos.distance(vec3(t.0 as f32, t.1 as f32, t.2 as f32)) > 1.0 {
+                game.world.set_block(t.0, t.1, t.2, game.selected_id as u8);
+                // reload the draw queue to get all the new blocks
+                game.draw_queue.clear();
+                game.draw_queue.push(game.player_object.clone());
+                for ele in game.world.blocks() {
+                    game.draw_queue
+                        .push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
+                }
+            }
+        }
         game.player_mut().update_orientation(a);
         if game.debug {
             draw_line(v.x, v.y, m.x, m.y, 2., GREEN);
@@ -407,7 +464,10 @@ async fn main() {
             );
         }
         root_ui().group(hash!(), vec2(200., 400.), |ui| {
-	    ui.button(None, format!("V:{}\n B:{}",VERSION.unwrap(),BUILD_TIME.unwrap_or("NAN")).as_str());
+            ui.button(
+                None,
+                format!("V:{}\n B:{}", VERSION.unwrap(), BUILD_TIME.unwrap_or("NAN")).as_str(),
+            );
             game.debug = if ui.button(None, format!("Debug Mode: {}", game.debug).as_str()) {
                 !game.debug
             } else {
@@ -431,50 +491,56 @@ async fn main() {
                 None,
                 format!("Render Queue: {}", game.draw_queue.len()).as_str(),
             );
-	    if ui.button(None, "Toggle Player Fog") {
-		let x = 
-		    if game.blocks_cover_player {
-			1
-		    } else {
-			0
-		    };
-		game.blocks_cover_player = !game.blocks_cover_player;
-		game.block_material.set_uniform("player_hidble",x);
-	    }
-	    ui.button(None, format!("Current BlockID: {}",game.selected_id).as_str());
-	    ui.texture(game.block_textures[game.selected_id as usize].clone(),32.0,32.0);
-	    if ui.button(None, "Next Block ID") {
-		if game.selected_id < (game.block_textures.len() - 1) as u32 {
-		    game.selected_id += 1;
-		}
-		else { 
-		    game.selected_id = 1;
-		}
-	    }
+            if ui.button(None, "Toggle Player Fog") {
+                let x = if game.blocks_cover_player { 1 } else { 0 };
+                game.blocks_cover_player = !game.blocks_cover_player;
+                game.block_material.set_uniform("player_hidble", x);
+            }
+            ui.button(
+                None,
+                format!("Current BlockID: {}", game.selected_id).as_str(),
+            );
+            ui.texture(
+                game.block_textures[game.selected_id as usize].clone(),
+                32.0,
+                32.0,
+            );
+            if ui.button(None, "Next Block ID") {
+                if game.selected_id < (game.block_textures.len() - 1) as u32 {
+                    game.selected_id += 1;
+                } else {
+                    game.selected_id = 1;
+                }
+            }
         });
         if is_mouse_button_down(MouseButton::Right) {
-            root_ui().window(hash!(), mouse_position().into(), vec2(100., 200.), |ui| {
-                ui.button(None, "Select Block:");
-                for (id, t) in game.block_textures.iter().enumerate() {
-                    ui.button(None, format!("BlockID: {}", id));
-                    ui.canvas().image(Rect::new(0., 0., 32., 32.), t);
-                }
-            });
+            //     root_ui().window(hash!(), mouse_position().into(), vec2(100., 200.), |ui| {
+            //         ui.button(None, "Select Block:");
+            //         for (id, t) in game.block_textures.iter().enumerate() {
+            //             ui.button(None, format!("BlockID: {}", id));
+            //             ui.canvas().image(Rect::new(0., 0., 32., 32.), t);
+            //         }
+            //     });
+            if game.selected_id < (game.block_textures.len() - 1) as u32 {
+                game.selected_id += 1;
+            } else {
+                game.selected_id = 1;
+            }
         }
 
-	let z = match get_last_key_pressed() {
-	    Some(macroquad::input::KeyCode::Key1) => Some(1),
-	    Some(macroquad::input::KeyCode::Key2) => Some(2),
-	    Some(macroquad::input::KeyCode::Key3) => Some(3),
-	    Some(macroquad::input::KeyCode::Key4) => Some(4),
-	    Some(macroquad::input::KeyCode::Key5) => Some(5),
-	    Some(macroquad::input::KeyCode::Key6) => Some(6),
-	    Some(macroquad::input::KeyCode::Key7) => Some(7),
-	    _ => None
-	};
-	if z.is_some() {
-	   game.selected_id = z.unwrap();
-	}
+        let z = match get_last_key_pressed() {
+            Some(macroquad::input::KeyCode::Key1) => Some(1),
+            Some(macroquad::input::KeyCode::Key2) => Some(2),
+            Some(macroquad::input::KeyCode::Key3) => Some(3),
+            Some(macroquad::input::KeyCode::Key4) => Some(4),
+            Some(macroquad::input::KeyCode::Key5) => Some(5),
+            Some(macroquad::input::KeyCode::Key6) => Some(6),
+            Some(macroquad::input::KeyCode::Key7) => Some(7),
+            _ => None,
+        };
+        if z.is_some() {
+            game.selected_id = z.unwrap();
+        }
         next_frame().await;
     }
 }
