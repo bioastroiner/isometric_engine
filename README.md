@@ -16,4 +16,8 @@ basic-http-server . # or any other way of serving
 # note that for github deploying we dont use this index.html as of now
 ```
 ### Native
-same as above without the target part, just note that this game for reasons i do not understand (bugs i am too lazy to fix) is not able to run in debug mode and should only be ran in optimized --release mode this means that debugging is not really possible :( until i fix the stack overflow that happens in non optimized builds.
+same as above without the target part.
+```sh
+# very basic
+cargo run --release
+```

@@ -59,7 +59,6 @@ jobs:
         <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
         <script>load("./release.wasm");</script>
         <a href="./debug.html">Debug</a>
-        <a href="./index.html">Release (this)</a>
         </body>
         </html>
         EOL
@@ -87,7 +86,6 @@ jobs:
         <canvas id="glcanvas" tabindex='1'></canvas>
         <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
         <script>load("./debug.wasm");</script>
-        <a href="./debug.html">Debug (this)</a>
         <a href="./index.html">Release</a>
         </body>
         </html>
