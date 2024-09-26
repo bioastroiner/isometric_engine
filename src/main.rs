@@ -135,8 +135,8 @@ async fn load_tiles_assets() -> Vec<Texture2D> {
     tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_select.png"),Some(ImageFormat::Png)));
     tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_frame.png"),Some(ImageFormat::Png)));
     tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_grass.png"),Some(ImageFormat::Png)));
+    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_stone.png"),Some(ImageFormat::Png)));
     tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile.png"),Some(ImageFormat::Png)));
-    tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_d.png"),Some(ImageFormat::Png)));
     tiles.push(Texture2D::from_file_with_format(include_bytes!("../tile_machine.png"),Some(ImageFormat::Png)));
     // tles.push(load_texture("tile_machine.png").await.unwrap());
     for tile in &tiles {
@@ -186,7 +186,7 @@ async fn main() {
         ))),
         world: world::World::new(),
         player_textures: load_player_assets(),
-        debug: true,
+        debug: if cfg!(debug_assertions) {true} else {false}, 
         draw_queue: Vec::with_capacity(1000),
         block_material: material::load_material(
             ShaderSource::Glsl {
