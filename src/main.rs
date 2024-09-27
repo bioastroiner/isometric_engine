@@ -10,6 +10,7 @@ use world::World;
 use macroquad::{
     material,
     prelude::*,
+    time,
     ui::{
         widgets::{Button, Group, Window},
         *,
@@ -169,12 +170,20 @@ async fn load_tiles_assets() -> Vec<Texture2D> {
         include_bytes!("../empty.png"),
         Some(ImageFormat::Png),
     ));
+    // tiles.push(Texture2D::from_file_with_format(
+    //     include_bytes!("../tile_select.png"),
+    //     Some(ImageFormat::Png),
+    // ));
+    // tiles.push(Texture2D::from_file_with_format(
+    //     include_bytes!("../tile_frame.png"),
+    //     Some(ImageFormat::Png),
+    // ));
     tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_select.png"),
+        include_bytes!("../tile_stone.png"),
         Some(ImageFormat::Png),
     ));
     tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_frame.png"),
+        include_bytes!("../tile_dirt.png"),
         Some(ImageFormat::Png),
     ));
     tiles.push(Texture2D::from_file_with_format(
@@ -182,11 +191,15 @@ async fn load_tiles_assets() -> Vec<Texture2D> {
         Some(ImageFormat::Png),
     ));
     tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_stone.png"),
+        include_bytes!("../tile_stone_smooth.png"),
         Some(ImageFormat::Png),
     ));
     tiles.push(Texture2D::from_file_with_format(
         include_bytes!("../tile.png"),
+        Some(ImageFormat::Png),
+    ));
+    tiles.push(Texture2D::from_file_with_format(
+        include_bytes!("../tile_gravel.png"),
         Some(ImageFormat::Png),
     ));
     tiles.push(Texture2D::from_file_with_format(
@@ -347,6 +360,13 @@ async fn main() {
                 } else {
                     game.selected_id = (game.block_textures.len() - 1) as u32;
                 }
+            }
+        }
+        if is_key_down(miniquad::KeyCode::Tab) {
+            if game.selected_id < (game.block_textures.len() - 1) as u32 {
+                game.selected_id += 1;
+            } else {
+                game.selected_id = 1;
             }
         }
         game.block_material.set_uniform("camera_zoom", camera.zoom);
