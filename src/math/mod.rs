@@ -16,8 +16,12 @@ pub fn transform_tile(x: f32, y: f32, tile_size: (f32, f32)) -> (f32, f32) {
     (mat.mul_vec2(vec2(x, y)).x, mat.mul_vec2(vec2(x, y)).y)
 }
 /// consumes a 2d coordinates and converts it to a 3d isometric coordinate
-#[inline]
-pub fn world_to_is(v_2d: Vec2, tile_size: (f32, f32)) -> Vec2 {
+// #[inline]
+// pub fn world_to_is(v_2d: Vec2, tile_size: (f32, f32)) -> Vec2 {
+//     tile_matrix(tile_size).mul_vec2(v_2d)
+// }
+/// consumes a 2d coordinates and converts it to a 3d isometric coordinate
+pub fn screen_to_iso(v_2d: Vec2, tile_size: (f32, f32)) -> Vec2 {
     tile_matrix(tile_size).mul_vec2(v_2d)
 }
 /// consumes a isometric coordinates and converts it to a 2d world coordinate

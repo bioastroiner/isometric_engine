@@ -1,21 +1,14 @@
-pub mod math;
+pub mod ecs;
+pub mod perlin;
 pub mod render;
 
-use math::*;
 use miniquad::{window::screen_size, BlendState};
+use objects::player::*;
 use objects::*;
 use render::*;
 use world::World;
 
-use macroquad::{
-    material,
-    prelude::*,
-    time,
-    ui::{
-        widgets::{Button, Group, Window},
-        *,
-    },
-};
+use macroquad::{material, prelude::*, ui::*};
 use std::{
     cell::{Ref, RefCell, RefMut},
     cmp::Ordering,
@@ -23,24 +16,18 @@ use std::{
     rc::Rc,
 };
 
+mod math;
 mod objects;
 mod world;
-mod constants {
+pub mod constants {
     pub const TILE_SIZE: (f32, f32) = (64.0, 64.0);
 }
+use crate::{
+    math::*,
+    objects::{block::Block, player::is_player_colliding_with_solid_block},
+};
 use constants::*;
 
-#[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
-pub(crate) enum PlayerOrient {
-    _0 = 0,
-    _45 = 45,
-    _90 = 90,
-    _135 = 135,
-    _180 = 180,
-    _225 = 225,
-    _270 = 270,
-    _315 = 315,
-}
 pub(crate) struct Game {
     block_trans_map: Vec<u32>,
     block_textures: Vec<Texture2D>,
@@ -57,7 +44,8 @@ pub(crate) struct Game {
     selection_top: Texture2D,
     ui_selection_mode: bool,
     ui_selection_pos: Vec2,
-    // buffer_queue: Vec<Rc<RefCell<dyn ISOGraphics>>>, // todo: a buffer for holding old data in draw queue to be moved out or into draw queue on player discovery of new visible chunk
+    /*                                trasparent     */
+    blocks: HashMap<String, (Texture2D, bool)>, // buffer_queue: Vec<Rc<RefCell<dyn ISOGraphics>>>, // todo: a buffer for holding old data in draw queue to be moved out or into draw queue on player discovery of new visible chunk
 }
 impl Game {
     fn player(&self) -> Ref<Player> {
@@ -89,150 +77,59 @@ fn cmp_tiles_test() {
 #[inline]
 fn in_2d(pos: Vec3) -> Vec2 {
     let pp = flatten_iso(pos);
-    let pp = world_to_is(pp, TILE_SIZE);
+    let pp = screen_to_iso(pp, TILE_SIZE);
 
     pp.with_x(pp.x + TILE_SIZE.0 / 2.)
         .with_y(pp.y + TILE_SIZE.1 / 2.)
 }
-/// tests if a block exists on screen (not necesserly visible)
-fn is_on_screen(pos: Vec3, cam: &Camera2D) -> bool {
-    let r = Rect::new(0., 0., screen_width(), screen_width());
-    let f = flatten_iso(pos);
-    let f = tile_matrix(TILE_SIZE).inverse().mul_vec2(f);
-    r.contains(cam.world_to_screen(f))
-}
-fn load_player_assets() -> HashMap<PlayerOrient, Texture2D> {
-    let mut _player_textures = HashMap::new();
-    _player_textures.insert(
-        PlayerOrient::_225,
-        Texture2D::from_file_with_format(
-            include_bytes!("../resources/player/225.png"),
-            Some(ImageFormat::Png),
-        ),
-    );
-    _player_textures.insert(
-        PlayerOrient::_315,
-        Texture2D::from_file_with_format(
-            include_bytes!("../resources/player/315.png"),
-            Some(ImageFormat::Png),
-        ),
-    );
-    _player_textures.insert(
-        PlayerOrient::_45,
-        Texture2D::from_file_with_format(
-            include_bytes!("../resources/player/45.png"),
-            Some(ImageFormat::Png),
-        ),
-    );
-    _player_textures.insert(
-        PlayerOrient::_135,
-        Texture2D::from_file_with_format(
-            include_bytes!("../resources/player/135.png"),
-            Some(ImageFormat::Png),
-        ),
-    );
-    _player_textures.insert(
-        PlayerOrient::_270,
-        Texture2D::from_file_with_format(
-            include_bytes!("../resources/player/270.png"),
-            Some(ImageFormat::Png),
-        ),
-    );
-    _player_textures.insert(
-        PlayerOrient::_90,
-        Texture2D::from_file_with_format(
-            include_bytes!("../resources/player/90.png"),
-            Some(ImageFormat::Png),
-        ),
-    );
-    _player_textures.insert(
-        PlayerOrient::_180,
-        Texture2D::from_file_with_format(
-            include_bytes!("../resources/player/180.png"),
-            Some(ImageFormat::Png),
-        ),
-    );
-    _player_textures.insert(
-        PlayerOrient::_0,
-        Texture2D::from_file_with_format(
-            include_bytes!("../resources/player/0.png"),
-            Some(ImageFormat::Png),
-        ),
-    );
-    _player_textures
-        .iter_mut()
-        .for_each(|f| f.1.set_filter(FilterMode::Nearest));
-    _player_textures
+
+macro_rules! load_tile {
+    ($file:expr $(,)?) => {
+        Texture2D::from_file_with_format(include_bytes!($file), Some(ImageFormat::Png))
+    };
 }
 async fn load_tiles_assets() -> Vec<Texture2D> {
-    let mut tiles: Vec<Texture2D> = Vec::new();
-    tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../empty.png"),
-        Some(ImageFormat::Png),
-    ));
-    // tiles.push(Texture2D::from_file_with_format(
-    //     include_bytes!("../tile_select.png"),
-    //     Some(ImageFormat::Png),
-    // ));
-    // tiles.push(Texture2D::from_file_with_format(
-    //     include_bytes!("../tile_frame.png"),
-    //     Some(ImageFormat::Png),
-    // ));
-    tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_stone.png"),
-        Some(ImageFormat::Png),
-    ));
-    tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_dirt.png"),
-        Some(ImageFormat::Png),
-    ));
-    tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_grass.png"),
-        Some(ImageFormat::Png),
-    ));
-    tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_stone_smooth.png"),
-        Some(ImageFormat::Png),
-    ));
-    tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile.png"),
-        Some(ImageFormat::Png),
-    ));
-    tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_gravel.png"),
-        Some(ImageFormat::Png),
-    ));
-    tiles.push(Texture2D::from_file_with_format(
-        include_bytes!("../tile_machine.png"),
-        Some(ImageFormat::Png),
-    ));
+    let tiles: Vec<Texture2D> = vec![
+        Texture2D::from_file_with_format(include_bytes!("../empty.png"), Some(ImageFormat::Png)),
+        // Texture2D::from_file_with_format(
+        //     include_bytes!("../tile_select.png"),
+        //     Some(ImageFormat::Png),
+        // ),
+        // Texture2D::from_file_with_format(
+        //     include_bytes!("../tile_frame.png"),
+        //     Some(ImageFormat::Png),
+        // ),
+        Texture2D::from_file_with_format(
+            include_bytes!("../tile_stone.png"),
+            Some(ImageFormat::Png),
+        ),
+        Texture2D::from_file_with_format(
+            include_bytes!("../tile_dirt.png"),
+            Some(ImageFormat::Png),
+        ),
+        Texture2D::from_file_with_format(
+            include_bytes!("../tile_grass.png"),
+            Some(ImageFormat::Png),
+        ),
+        Texture2D::from_file_with_format(
+            include_bytes!("../tile_stone_smooth.png"),
+            Some(ImageFormat::Png),
+        ),
+        Texture2D::from_file_with_format(include_bytes!("../tile.png"), Some(ImageFormat::Png)),
+        Texture2D::from_file_with_format(
+            include_bytes!("../tile_gravel.png"),
+            Some(ImageFormat::Png),
+        ),
+        Texture2D::from_file_with_format(
+            include_bytes!("../tile_machine.png"),
+            Some(ImageFormat::Png),
+        ),
+    ];
     // tles.push(load_texture("tile_machine.png").await.unwrap());
     for tile in &tiles {
         tile.set_filter(FilterMode::Nearest);
     }
     tiles
-}
-fn generate_world(world: &mut World) {
-    for i in 0..50 {
-        for j in 0..50 {
-            //ground
-            world.set_block(i, j, 0, 3);
-            // hill
-            // if (5..=8).contains(&i) && (3..=6).contains(&j) {
-            // world.set_block(i, j, 2, 3);
-            // world.set_block(i, j, 4, 3);
-            // }
-            // if i > 0 && i < 3 && j > 0 && j < 3 {
-            // world.set_block(i, j, 4, 3);
-            // }
-        }
-    }
-    // world.set_block(10, 10, 1, 6);
-    // world.set_block(11, 10, 1, 6);
-    // world.set_block(12, 10, 1, 6);
-    // world.set_block(10, 10, 3 + 2, 6);
-    // world.set_block(11, 10, 3 + 2, 6);
-    // world.set_block(12, 10, 3 + 2, 6);
 }
 const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const BUILD_TIME: Option<&str> = option_env!("SOURCE_DATE_EPOCH");
@@ -241,12 +138,17 @@ async fn main() {
     let _quad_gl = unsafe { get_internal_gl().quad_gl };
     let _quad_context = unsafe { get_internal_gl().quad_context };
     let mut game = Game {
+        blocks: HashMap::from([
+	    // ("dirt".to_string(),(load_tile!("../tile_dirt.png"),false)),
+	    // ("grass".to_string(),(load_tile!("../tile_grass.png"),false)),
+	    // ("stone".to_string(),(load_tile!("../tile_stone.png"),false)),
+	    // ("stone_smooth".to_string(),(load_tile!("../tile_stone_smooth.png"),false)),
+	]),
         block_trans_map: vec![0, 1, 2],
         selection_top: Texture2D::from_file_with_format(
             include_bytes!("../selection_top.png"),
             Some(ImageFormat::Png),
         ),
-
         shade_top: Texture2D::from_file_with_format(
             include_bytes!("../shade_top.png"),
             Some(ImageFormat::Png),
@@ -258,10 +160,7 @@ async fn main() {
         selected_id: 3,
         blocks_cover_player: false,
         block_textures: load_tiles_assets().await,
-        player_object: Rc::new(RefCell::new(objects::Player::new(
-            vec3(0., 0., 1.),
-            Vec3::ZERO,
-        ))),
+        player_object: Rc::new(RefCell::new(Player::new(vec3(0., 0., 1.), Vec3::ZERO))),
         world: world::World::new(),
         player_textures: load_player_assets(),
         debug: if cfg!(debug_assertions) { true } else { false },
@@ -308,7 +207,7 @@ async fn main() {
         ui_selection_pos: Vec2::ZERO,
     };
     build_textures_atlas();
-    generate_world(&mut game.world);
+    world::generate_world(&mut game.world);
     let mut camera = Camera2D::from_display_rect(Rect {
         x: -500.,
         y: -500.,
@@ -325,11 +224,11 @@ async fn main() {
     // todo: Later do something with dynamic loading where we only load a portion of visible map
     for ele in game.world.blocks() {
         game.draw_queue
-            .push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
+            .push(Rc::new(RefCell::new(Block::new(ele.0, ele.1))));
     }
     let mut curser_pos_iso = vec2(0., 0.);
     loop {
-        game.block_material.set_uniform("mouse", mouse_position());
+        let set_uniform = game.block_material.set_uniform("mouse", mouse_position());
         game.block_material.set_uniform("resolution", screen_size());
         game.block_material.set_uniform(
             "resolution_cam",
@@ -394,6 +293,7 @@ async fn main() {
 
         // update players physics
         let player_pos = game.player_object.as_ref().borrow().pos();
+        let player_vel = game.player_object.as_ref().borrow().vel();
         game.block_material
             .set_uniform("player_world_pos", player_pos);
         let direction2d = -(player_pos.xy() - curser_pos_iso).normalize();
@@ -405,25 +305,37 @@ async fn main() {
         if is_key_down(miniquad::KeyCode::W) {
             if !direction.is_nan() && direction.length() > 0.5 {
                 game.player_object.borrow_mut().set_vel(direction * 2.);
-                // player.pos += direction * player_speed * get_frame_time();
             }
         } else {
             let z = game.player_object.as_ref().borrow().vel().z;
             game.player_object.borrow_mut().set_vel(vec3(0., 0., z));
         }
+        if is_key_pressed(miniquad::KeyCode::Space) && player_vel.z < 0.1 {
+            game.player_object.borrow_mut().set_vel(vec3(
+                player_vel.x,
+                player_vel.y,
+                0.2 * get_frame_time(),
+            ));
+            println!("jumped");
+            println!("Speed {:?}", player_vel);
+        }
         // update physics
-        let vel = game.player_object.as_ref().borrow().vel();
-        let pos = game.player_object.as_ref().borrow().pos();
-        if game
-            .world
-            .get_block_f((pos + vel * get_frame_time()).with_z(pos.z).floor() + vec3(1.0, 1.0, 0.0))
-            != 0
-        {
+        // apply speed to pos
+        let gravity = 0.2 * get_frame_time();
+        if is_player_colliding_with_solid_block(&game.world, &game.player_object.borrow()) {
             let z = game.player_object.as_ref().borrow().vel().z;
             game.player_object.borrow_mut().set_vel(vec3(0., 0., z));
         }
+        if is_player_colliding_with_solid_ground(&game.world, &game.player_object.borrow()) {
+            println!("grounded");
+            let x = game.player_object.as_ref().borrow().vel().x;
+            let y = game.player_object.as_ref().borrow().vel().y;
+            game.player_object.borrow_mut().set_vel(vec3(x, y, 0.));
+        }
         let vel = game.player_object.as_ref().borrow().vel();
-        game.player_mut().set_pos(pos + vel * get_frame_time());
+        game.player_mut()
+            .set_pos(player_pos + player_vel * get_frame_time());
+        // Render everything
         for el in game.draw_queue.iter() {
             let renderable = el.as_ref().borrow();
             renderable.render(&game);
@@ -510,7 +422,9 @@ async fn main() {
                 game.draw_queue.push(game.player_object.clone());
                 for ele in game.world.blocks() {
                     game.draw_queue
-                        .push(Rc::new(RefCell::new(objects::Block::new(ele.0, ele.1))));
+                        .push(Rc::new(RefCell::new(objects::block::Block::new(
+                            ele.0, ele.1,
+                        ))));
                 }
             }
         }
@@ -583,7 +497,6 @@ async fn main() {
             game.ui_selection_mode = !game.ui_selection_mode;
             if game.ui_selection_mode {
                 game.ui_selection_pos = mouse_position().into();
-            } else {
             }
         }
         if game.ui_selection_mode {

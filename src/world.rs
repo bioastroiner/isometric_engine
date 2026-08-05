@@ -5,9 +5,10 @@ const HEIGHT: usize = 64;
 const AREA: usize = WIDTH * WIDTH;
 const VOL: usize = AREA * HEIGHT;
 /// world only stores tiles as they can be only one tile per block
+#[derive(Debug, Hash, Clone)]
 pub struct World {
     tile_storage: Vec<Vec<Vec<u8>>>,
-    // entity_storage
+    // entity_storage: Vec<Vec<Vec<usize>>>
 }
 impl World {
     pub fn new() -> Self {
@@ -50,4 +51,18 @@ impl World {
         }
         dest
     }
+}
+pub fn generate_world(world: &mut World) {
+    // underground
+    for i in 0..50 {
+        for j in 0..50 {
+            world.set_block(i, j, 0, 1);
+        }
+    }
+    // world.set_block(10, 10, 1, 6);
+    // world.set_block(11, 10, 1, 6);
+    // world.set_block(12, 10, 1, 6);
+    // world.set_block(10, 10, 3 + 2, 6);
+    // world.set_block(11, 10, 3 + 2, 6);
+    // world.set_block(12, 10, 3 + 2, 6);
 }
